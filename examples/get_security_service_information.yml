@@ -1,0 +1,13 @@
+---
+- hosts: myhosts
+  connection: local
+  name: get security service information
+  gather_facts: False
+
+
+  tasks:
+  - name: get security service information
+    ibmc_get_security_service_information:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
