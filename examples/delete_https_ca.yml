@@ -1,0 +1,16 @@
+---
+- hosts: myhosts
+  connection: local
+  name: delete https ca
+  gather_facts: False
+
+# certID: ID of the root certificate used to authenticate the remote HTTPS server.
+    # - Available values: [5, 6, 7, 8].
+
+  tasks:
+  - name: delete https ca
+    ibmc_delete_https_ca:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
+      certID: 6

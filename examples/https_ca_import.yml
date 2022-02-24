@@ -1,0 +1,33 @@
+---
+- hosts: myhosts
+  connection: local
+  name: import https ca
+  gather_facts: False
+
+# certpath: certificate to be imported (including the path and file name).
+    # When the certificate is imported from a remote file server, the format is protocol://file_server_ip/folder/file_name
+    # The file name extension must be in (".crt", ".cer", ".pem").
+# certID: ID of the root certificate used to authenticate the remote HTTPS server.
+    # - Available values: [5, 6, 7, 8].
+# usage: certificate usage
+    # - Available values: "FileTransfer".
+# import_location:  location of the certificate.
+    # If the certificate is stored in the tmp directory of the BMC, the value is tmp.
+    # If the certificate is stored in a local directory, the value is local.
+    # If the certificate is stored on a remote file server, the value is the file server protocol.
+    # - Available values: tmp, local, sftp, https, nfs, cifs, scp
+# file_server_user: remote file server user name
+# file_server_pswd: remote file server password
+
+  tasks:
+  - name: import https ca
+    ibmc_https_ca_import:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
+      certpath: "/tmp/xFusionCA3.crt"
+      certID: 5
+      # usage: "FileTransfer"
+      import_location: "tmp"
+      # file_server_user: "{{sftp_user}}"
+      # file_server_pswd: "{{sftp_pswd}}"

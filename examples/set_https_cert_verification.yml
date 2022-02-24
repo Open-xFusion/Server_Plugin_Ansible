@@ -1,0 +1,16 @@
+---
+- hosts: myhosts
+  connection: local
+  name: set https cert verification
+  gather_facts: False
+
+# verify_cmd: Configure the switch for enabling or disabling certificate verification for the HTTPS remote file server.
+    # Available values: True/False/off/on/yes/no/1/0
+
+  tasks:
+  - name: set https cert verification
+    ibmc_set_https_cert_verification:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
+      verify_cmd: True
