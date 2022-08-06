@@ -183,6 +183,8 @@ def get_cpu_info(ibmc, systems_json):
                 result = r.status_code
                 if result == 200:
                     each_json = r.json()
+                    if each_json.get("ProcessorType", None) and each_json.get("ProcessorType", None) != "CPU":
+                        continue
                     # delete no means info
                     if '@odata.id' in each_json.keys():
                         del each_json['@odata.id']

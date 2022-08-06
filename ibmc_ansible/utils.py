@@ -25,9 +25,9 @@ try:
 except ImportError:
     import configparser as cp
 try:
-    USER = os.popen('whoami').read().split("\n")[0]
+    USER = os.popen('/usr/bin/whoami').read().split("\n")[0]
 except Exception as e:
-    print("Unable to get current user name, the error as %s" % str(e))
+    logging.error("Unable to get current user name, the error as %s", str(e))
     raise
 
 IBMC_LOG_PATH = "/home/%s/ansible_ibmc/log" % USER
@@ -162,10 +162,10 @@ def write_result(ibmc, result_file, result):
             subprocess.call(["mkdir", "-p", result_path], shell=False)
             os.chmod(result_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP)
         # Write the results to the file as an overlay
-        with open(result_file, "w") as json_file:
+        flags = os.O_WRONLY | os.O_CREAT
+        with os.fdopen(os.open(result_file, flags, stat.S_IRUSR | stat.S_IWUSR), "w") as json_file:
             if json_file and result:
                 json.dump(result, json_file, indent=4)
-        os.chmod(result_file, stat.S_IRUSR | stat.S_IWUSR)
     except IOError as e:
         ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(e)))
         ibmc.report_error("Failed to write result to %s" % result_file)
@@ -199,7 +199,7 @@ def write_result_csv(ibmc, result_file, header_csv, result_csv):
             subprocess.call(["mkdir", "-p", result_path], shell=False)
             os.chmod(result_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP)
         # Write the results to the csv file
-        with open(result_file, 'w') as csv_file:
+        with os.fdopen(os.open(result_file, os.O_WRONLY, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP), 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(header_csv)
             csv_writer.writerow(result_csv)

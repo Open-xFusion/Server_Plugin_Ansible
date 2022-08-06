@@ -17,19 +17,20 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.poolmanager import PoolManager as PoolManager
 from requests.packages.urllib3.connection import HTTPSConnection as HTTPSConnection
+from ibmc_ansible.ibmc_logger import log
 
 try:
     from ssl import PROTOCOL_TLSv1_2
     IMPORT_TLS = True
 except ImportError as e:
     IMPORT_TLS = False
-    print(str(e))
+    log.error(str(e))
 
 try:
     from ssl import PROTOCOL_SSLv23 as PROTOCOL_TLS
 except ImportError as e:
     from ssl import PROTOCOL_TLS as PROTOCOL_TLS
-    print(str(e))
+    log.error(str(e))
 
 from ibmc_ansible.utils import read_ssl_ciphers
 from ibmc_ansible.utils import read_ssl_verify
@@ -47,19 +48,19 @@ class IbmcBaseConnect():
     Date: 10/19/2019
     """
 
-    def __init__(self, param_dic, log=None, report=None, debug=None):
+    def __init__(self, param_dic, input_log=None, report=None, debug=None):
         self.bmc_token = ''
         self.oem_info = ''
         self.bmc_session_id = ''
         self.user = param_dic['ibmc_user']
         self.pswd = param_dic['ibmc_pswd']
         self.ip = param_dic['ibmc_ip']
-        self.log = log
-        self.verify = read_ssl_verify(log)
-        self.tls1_2 = read_ssl_force_tls(log)
+        self.log = input_log
+        self.verify = read_ssl_verify(input_log)
+        self.tls1_2 = read_ssl_force_tls(input_log)
         self.report = report
         self.session = requests.session()
-        self.ciphers = read_ssl_ciphers(log)
+        self.ciphers = read_ssl_ciphers(input_log)
         if (self.ciphers is not None) and (self.ciphers != ''):
             ssl._DEFAULT_CIPHERS = self.ciphers
         else:
