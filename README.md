@@ -6,7 +6,7 @@ I. General Information
 
     Name:     Ansible Plugin Pack for xFusion Server
     Function: Query, Configuration, Deployment, and Upgrade
-    Version:  2.0.7
+    Version:  2.0.8
 
 	
 II. Description
@@ -40,4 +40,4 @@ V. Supported Device
 	
 VI. Additional Resources
 
-    For more information consult User Guide: https://github.com/Open-xFusion/Server_Plugin_Ansible/tree/master/docs
+    For more information consult User Guide. go to the xFusion github repository.

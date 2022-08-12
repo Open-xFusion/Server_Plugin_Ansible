@@ -198,14 +198,12 @@ def download_file_request(ibmc, bmc_file, local_file_name, file_type=None):
         request_code = request_result.status_code
         if request_code == 200:
             ibmc.log_info("Start to save the file")
-            with open(local_file_name, 'wb') as local_file:
-                local_file.write(request_result.content)
-
+            flags = os.O_WRONLY | os.O_CREAT
             # Control file permissions, the file owner can read, write, and execute files.
             if file_type == "profile":
-                os.chmod(local_file_name, stat.S_IRUSR | stat.S_IWUSR)
+                write_file(local_file_name, flags, stat.S_IRUSR | stat.S_IWUSR, request_result.content)
             else:
-                os.chmod(local_file_name, stat.S_IRUSR | stat.S_IXUSR)
+                write_file(local_file_name, flags, stat.S_IRUSR | stat.S_IXUSR, request_result.content)
             log_msg = "Save file successfully!"
             set_result(ibmc.log_info, log_msg, True, ret)
         else:
@@ -220,3 +218,21 @@ def download_file_request(ibmc, bmc_file, local_file_name, file_type=None):
         set_result(ibmc.log_error, error_msg, False, ret)
 
     return ret
+
+
+def write_file(local_file_name, flags, mode, content):
+    """
+    Function:
+        write file
+    Args:
+        local_file_name : Local File Name
+        flags : the way to open file
+        mode : file permission
+        content: file content
+    Returns:
+        None
+    Raises:
+        None
+    """
+    with os.fdopen(os.open(local_file_name, flags, mode), 'wb') as local_file:
+        local_file.write(content)
