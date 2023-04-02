@@ -52,7 +52,6 @@ def set_ibmc_ip(ibmc, ip_info):
     Date: 2019/9/23 21:21
     """
     ibmc.log_info("Start set iBMC ip...")
-
     # Get the current IP version
     oem_info = ibmc.oem_info
     request_result_json = get_ibmc_ip_request(ibmc)
@@ -60,6 +59,7 @@ def set_ibmc_ip(ibmc, ip_info):
         current_ip = {}
         curr_ip_version = request_result_json["Oem"][oem_info]["IPVersion"]
         current_ip["curr_ip_version"] = curr_ip_version
+        current_ip["hostname"] = request_result_json.get("HostName")
     except Exception as e:
         log_error = "Get iBMC current ip failed! The error info is: %s \n" % str(e)
         ibmc.log_error(log_error)
@@ -75,6 +75,8 @@ def set_ibmc_ip(ibmc, ip_info):
     ipv4_addr = ip_info.get('ipv4_addr')
     ipv6_addr = ip_info.get('ipv6_addr')
     ipv6_gateway = ip_info.get('ipv6_gateway')
+    hostname = ip_info.get('hostname')
+    domain_name = ip_info.get('domain_name')
 
     # Verify the legality of the IPv4 address, IPv6 address and IPv6 gateway
     verify_result = validate_ip_address(ibmc, ipv4_address_list=ipv4_addr,
@@ -91,7 +93,18 @@ def set_ibmc_ip(ibmc, ip_info):
         ip_addr_payload['IPv6Addresses'] = convert_ipv6_addr(ipv6_addr)
     if ipv6_gateway:
         ip_addr_payload['IPv6DefaultGateway'] = ipv6_gateway
-
+    if hostname:
+        ip_addr_payload['HostName'] = hostname
+    if domain_name:
+        if hostname:
+            ip_addr_payload['FQDN'] = hostname + '.' + domain_name
+        elif current_ip.get("hostname"):
+            ip_addr_payload['FQDN'] = current_ip.get("hostname") + "." + domain_name
+        else:
+            ip_addr_payload['FQDN'] = domain_name
+            log_msg = "The host name is empty. Setting the domain name assigns \
+                      the first field of the domain name to the host name."
+            ibmc.log_info(log_msg)
     ret = set_ip_result(ibmc, ip_addr_payload, ip_version, curr_ip_version)
 
     return ret
@@ -226,9 +239,11 @@ def check_information(ibmc, ip_information, current_ip):
     ipv6_addr = ip_information.get('ipv6_addr')
     ipv6_gateway = ip_information.get('ipv6_gateway')
     current_version = current_ip.get("curr_ip_version")
+    hostname = ip_information.get('hostname')
+    domain_name = ip_information.get('domain_name')
 
     # If the input parameter is empty, prompt the user to enter the correct
-    param = (ip_version, ipv4_addr, ipv6_addr, ipv6_gateway)
+    param = (ip_version, ipv4_addr, ipv6_addr, ipv6_gateway, hostname, domain_name)
     if not any(param):
         log_msg = 'The input parameter is empty, please enter the correct ' \
                   'parameter in the set_ibmc_ip.yml file. '
@@ -356,6 +371,8 @@ def get_ibmc_ip(ibmc):
 
     # Write the result to a file
     result = {
+        "HostName": request_result_json.get("HostName"),
+        "FQDN": request_result_json.get("FQDN"),
         "IPv4Addresses": request_result_json.get("IPv4Addresses"),
         "IPv6Addresses": request_result_json.get("IPv6Addresses"),
         "IPv6DefaultGateway": request_result_json.get("IPv6DefaultGateway"),
@@ -415,7 +432,7 @@ def get_ibmc_ip_request(ibmc):
         request_code = request_result.status_code
         if request_code != 200:
             error = "Get iBMC ethernet interface info failed!" \
-                    "The error code is: %s. The error info is: %s"\
+                    "The error code is: %s. The error info is: %s" \
                     % (str(request_code), str(request_result.json()))
             ibmc.log_error(error)
             raise Exception(error)
