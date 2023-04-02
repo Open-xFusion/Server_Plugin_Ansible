@@ -16,7 +16,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 
 DOCUMENTATION = r'''
 ---
-module: ibmc_get_account
+module: ibmc_get_basic_info
 short_description: Get server information
 version_added: "2.5.0"
 description:

@@ -42,11 +42,11 @@ def format_role_id(ibmc, role_id):
         "customrole3": "CustomRole3",
         "customrole4": "CustomRole4"
     }
-    format_role_id = rold_id_dic.get(role_id.lower())
-    if format_role_id is None:
+    local_format_role_id = rold_id_dic.get(role_id.lower())
+    if local_format_role_id is None:
         raise Exception("The role id: %s is incorrect, please check whether the role id exists in %s" %
                         (str(role_id), str(rold_id_dic.values())))
-    return format_role_id
+    return local_format_role_id
 
 
 def get_accounts(ibmc):

@@ -4,6 +4,7 @@
   name: set ibmc ip
   gather_facts: False
 
+# target_bmc_ip: ibmc_ip that you specify to set network information, and you can only choose from the group of hosts.
 # ip_version: Whether IPv4/IPv6 is enabled, Available values: IPv4, IPv6, IPv4AndIPv6.
 # ipv4_addr: IPv4 address info.
   # address: IPv4 address.
@@ -15,6 +16,10 @@
   # prefix_length: Prefix length of the IPv6 address, must be an integer, value range: 0 to 128.
   # address_origin: How the IPv6 address is allocated. Available values: Static, DHCPv6.
 # ipv6_gateway: IPv6 gateway address of the iBMC network port.
+# hostname: iBMC HostName. Contains a maximum of 64 characters, including only letters, digits, and hyphens(-).
+#           Cannot start or end with a hyphen.
+# domain_name: Domain name. Contains a maximum of 67 characters. The format of FQDN is hostname.domain_name.
+#              For example, if hostname is "testhostname" and domain_name is "ibmc.com", then FQDN is "testhostname.ibmc.com".
 
   tasks:
   - name: set ibmc ip
@@ -22,15 +27,18 @@
       ibmc_ip: "{{ ibmc_ip }}"
       ibmc_user: "{{ ibmc_user }}"
       ibmc_pswd: "{{ ibmc_pswd }}"
+      target_bmc_ip: "192.168.3.11"
       ip_version: "IPv4AndIPv6"
       ipv4_addr:
-        - address: "172.26.100.100"
+        - address: "192.168.2.10"
           subnet_mask: "255.255.0.0"
-          gateway: "172.26.0.1"
+          gateway: "192.168.0.1"
           address_origin: "Static"
       ipv6_addr:
-        - address: "fc00:172::100"
-          prefix_length: 10
+        - address: "fc00:192::10"
+          prefix_length: 7
           address_origin: "Static"
-      ipv6_gateway: "fc00:172::1"
+      ipv6_gateway: "fc00:192::1"
+      hostname: "testhostname"
+      domain_name: "ibmc.com"
 

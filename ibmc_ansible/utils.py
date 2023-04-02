@@ -199,7 +199,8 @@ def write_result_csv(ibmc, result_file, header_csv, result_csv):
             subprocess.call(["mkdir", "-p", result_path], shell=False)
             os.chmod(result_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP)
         # Write the results to the csv file
-        with os.fdopen(os.open(result_file, os.O_WRONLY, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP), 'w') as csv_file:
+        flags = os.O_WRONLY | os.O_CREAT
+        with os.fdopen(os.open(result_file, flags, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP), 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(header_csv)
             csv_writer.writerow(result_csv)
