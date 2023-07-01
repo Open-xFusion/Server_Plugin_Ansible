@@ -288,8 +288,8 @@ class IbmcBaseConnect():
                     url, data=payload, headers=headers, verify=self.verify, timeout=tmout)
             else:
                 raise Exception("Request method not support")
-        except Exception as e:
-            self.log_error("request exception ,exception is :%s" % str(e))
+        except Exception as ex:
+            self.log_error("request exception ,exception is :%s" % str(ex))
             raise
         return r
 
@@ -307,9 +307,9 @@ class IbmcBaseConnect():
         payload = {'UserName': self.user, 'Password': self.pswd}
         try:
             r = self.request('POST', url, data=payload, tmout=timeout)
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Create session exception, The error info is: %s" % str(e))
+                "Create session exception, The error info is: %s" % str(ex))
             raise
         try:
             if r is None:
@@ -337,9 +337,9 @@ class IbmcBaseConnect():
                             "The error info is %s" % (r.status_code, str(error_msg))
                 self.log_error(log_error)
                 raise Exception(log_error)
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Create session exception, The error info is: %s" % str(e))
+                "Create session exception, The error info is: %s" % str(ex))
             raise
 
     def delete_session(self, timeout=10):
@@ -358,9 +358,9 @@ class IbmcBaseConnect():
         playload = {'UserName': self.user, 'Password': self.pswd}
         try:
             r = self.request('DELETE', url, data=playload, tmout=timeout)
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Failed to delete session, The error info is: %s" % str(e))
+                "Failed to delete session, The error info is: %s" % str(ex))
             raise
         if r is None:
             ret = {'status_code': 999,
@@ -393,9 +393,9 @@ class IbmcBaseConnect():
         uri = "%s/Managers" % self.root_uri
         try:
             response = self.request('GET', uri)
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Get system_uri failed! The uri is : %s, The error is %s" % (str(uri), str(e)))
+                "Get system_uri failed! The uri is : %s, The error is %s" % (str(uri), str(ex)))
             raise
         if response is None:
             self.log_error("get system_uri failed! uri :%s " % uri)
@@ -409,9 +409,9 @@ class IbmcBaseConnect():
             try:
                 ret = response.json()
                 ret = self.get_server_url(ret)
-            except Exception as e:
+            except Exception as ex:
                 self.log_error(
-                    "Failed to get system_uri, The error info is: %s" % str(e))
+                    "Failed to get system_uri, The error info is: %s" % str(ex))
                 raise
         return ret
 
@@ -441,9 +441,9 @@ class IbmcBaseConnect():
                     if state == "Enabled":
                         return member_uri
             return ret['Members'][0]['@odata.id']
-        except Exception as e:
+        except Exception as ex:
             self.log_error("Get managers_uri failed! The uri is : %s, The error is %s" % (
-                str(uri), str(e)))
+                str(uri), str(ex)))
             raise
 
     def get_etag(self, uri):
@@ -460,9 +460,9 @@ class IbmcBaseConnect():
         # get Etag
         try:
             response = self.request('GET', uri, tmout=100)
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Failed to get etag, The error info is: %s" % str(e))
+                "Failed to get etag, The error info is: %s" % str(ex))
             raise
         if response is None:
             raise Exception("get etag response is none")
@@ -477,9 +477,9 @@ class IbmcBaseConnect():
             try:
                 ret = {'status_code': response.status_code,
                        'message': response.json(), 'headers': response.headers}
-            except Exception as e:
+            except Exception as ex:
                 self.log_error(
-                    "Failed to get etag, The error info is: %s" % str(e))
+                    "Failed to get etag, The error info is: %s" % str(ex))
                 raise
             if 'Etag' in ret['headers'].keys():
                 etag = ret['headers']['ETag']
@@ -504,9 +504,9 @@ class IbmcBaseConnect():
         try:
             r = self.request('GET', resource=uri,
                              headers=headers, data=payload, tmout=300)
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Failed to get task, The error info is: %s" % (str(e)))
+                "Failed to get task, The error info is: %s" % (str(ex)))
             raise
         return r
 
@@ -581,11 +581,11 @@ class IbmcBaseConnect():
                     "Get systems info send command exception, error code:%d" % systems_r.status_code)
             else:
                 systems_json = systems_r.json()
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Get systems info send command exception, %s" % str(e))
+                "Get systems info send command exception, %s" % str(ex))
             raise Exception(
-                "Get systems info send command exception, exception is: %s" % str(e))
+                "Get systems info send command exception, exception is: %s" % str(ex))
         return systems_json
 
     def get_chassis_resource(self):
@@ -613,11 +613,11 @@ class IbmcBaseConnect():
             else:
                 chassis_json = chassis_r.json()
 
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Get chassis info send command exception, %s" % str(e))
+                "Get chassis info send command exception, %s" % str(ex))
             raise Exception(
-                "Get chassis info send command exception, exception is: %s" % str(e))
+                "Get chassis info send command exception, exception is: %s" % str(ex))
         return chassis_json
 
     def get_manager_resource(self):
@@ -646,11 +646,11 @@ class IbmcBaseConnect():
             else:
                 manager_json = manager_r.json()
 
-        except Exception as e:
+        except Exception as ex:
             self.log_error(
-                "Get manager info send command exception, %s" % str(e))
+                "Get manager info send command exception, %s" % str(ex))
             raise Exception(
-                "Get manager info send command exception, exception is: %s" % str(e))
+                "Get manager info send command exception, exception is: %s" % str(ex))
         return manager_json
 
     def get_ibmc_version(self):
@@ -667,8 +667,8 @@ class IbmcBaseConnect():
         """
         try:
             version = self.get_manager_resource()[u'FirmwareVersion']
-        except Exception as e:
-            self.log_error("get iBMC version exception! Exception:%s" % str(e))
+        except Exception as ex:
+            self.log_error("get iBMC version exception! Exception:%s" % str(ex))
             raise
         return version
 

@@ -41,7 +41,7 @@ def get_drives_info(ibmc, chassis_json):
     Author:
     Date: 2019/10/26
     """
-    drive_info = {}
+    drive_info = []
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {}
@@ -95,7 +95,7 @@ def get_mem_info(ibmc, systems_json):
     Author:
     Date: 2019/10/26
     """
-    memory_info = {}
+    memory_info = []
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {}
@@ -155,7 +155,7 @@ def get_cpu_info(ibmc, systems_json):
     Author:
     Date: 2019/10/26
     """
-    cpu_info = {}
+    cpu_info = []
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {}
@@ -364,19 +364,19 @@ def get_sp_info(ibmc):
     # Get the return result of the redfish interface
     request_result_json = get_sp_info_request(ibmc)
 
-    if request_result_json == {}:
-        return None
-
-    sp_json = {
-        "Id": request_result_json.get("Id"),
-        "Name": request_result_json.get("Name"),
-        "SPStartEnabled": request_result_json.get("SPStartEnabled"),
-        "SysRestartDelaySeconds": request_result_json.get("SysRestartDelaySeconds"),
-        "SPTimeout": request_result_json.get("SPTimeout"),
-        "SPFinished": request_result_json.get("SPFinished"),
-        "Version": request_result_json.get("Version")
-    }
-    return sp_json
+    if request_result_json:
+        sp_json = {
+            "Id": request_result_json.get("Id"),
+            "Name": request_result_json.get("Name"),
+            "SPStartEnabled": request_result_json.get("SPStartEnabled"),
+            "SysRestartDelaySeconds": request_result_json.get("SysRestartDelaySeconds"),
+            "SPTimeout": request_result_json.get("SPTimeout"),
+            "SPFinished": request_result_json.get("SPFinished"),
+            "Version": request_result_json.get("Version")
+        }
+        return sp_json
+    else:
+        return {}
 
 
 def get_sp_info_request(ibmc):
