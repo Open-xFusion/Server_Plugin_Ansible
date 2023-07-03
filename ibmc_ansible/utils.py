@@ -95,10 +95,10 @@ def ansible_ibmc_run_module(function_callback, ansible_module, log, report):
         else:
             report.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), ret['msg']))
             ansible_module.fail_json(msg=ret['msg'])
-    except Exception as e:
-        log.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), str(e)))
-        report.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), str(e)))
-        ansible_module.fail_json(msg=str(e))
+    except Exception as ex:
+        log.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), str(ex)))
+        report.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), str(ex)))
+        ansible_module.fail_json(msg=str(ex))
 
 
 def ansible_get_loger(log_file, report_file, logger_name):
@@ -166,10 +166,10 @@ def write_result(ibmc, result_file, result):
         with os.fdopen(os.open(result_file, flags, stat.S_IRUSR | stat.S_IWUSR), "w") as json_file:
             if json_file and result:
                 json.dump(result, json_file, indent=4)
-    except IOError as e:
-        ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(e)))
+    except IOError as ex:
+        ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
         ibmc.report_error("Failed to write result to %s" % result_file)
-        raise IOError("Failed to write result to %s, the error info is: %s" % (result_file, str(e)))
+        raise IOError("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
 
 
 def write_result_csv(ibmc, result_file, header_csv, result_csv):
@@ -197,17 +197,17 @@ def write_result_csv(ibmc, result_file, header_csv, result_csv):
         result_path = os.path.dirname(result_file)
         if not os.path.exists(result_path):
             subprocess.call(["mkdir", "-p", result_path], shell=False)
-            os.chmod(result_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP)
+            os.chmod(result_path, stat.S_IRUSR | stat.S_IWUSR)
         # Write the results to the csv file
         flags = os.O_WRONLY | os.O_CREAT
-        with os.fdopen(os.open(result_file, flags, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP), 'w') as csv_file:
+        with os.fdopen(os.open(result_file, flags, stat.S_IRUSR | stat.S_IWUSR), 'w') as csv_file:
             csv_writer = csv.writer(csv_file)
             csv_writer.writerow(header_csv)
             csv_writer.writerow(result_csv)
-    except IOError as e:
-        ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(e)))
+    except IOError as ex:
+        ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
         ibmc.report_error("Failed to write result to %s" % result_file)
-        raise IOError("Failed to write result to %s, the error info is: %s" % (result_file, str(e)))
+        raise IOError("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
 
 
 def validate_ipv4(ip_str):
@@ -355,8 +355,8 @@ def read_ssl_verify(log):
             return False
         else:
             return verify
-    except Exception as e:
-        log.info("read ssl_cfg exception : %s" % str(e))
+    except Exception as ex:
+        log.info("read ssl_cfg exception : %s" % str(ex))
         return True
 
 
@@ -384,8 +384,8 @@ def read_ssl_ciphers(log):
             return ""
         else:
             return ciphers
-    except Exception as e:
-        log.info("read ssl_cfg exception : %s" % str(e))
+    except Exception as ex:
+        log.info("read ssl_cfg exception : %s" % str(ex))
         return ""
 
 
@@ -416,8 +416,8 @@ def read_ssl_force_tls(log):
             return False
         else:
             return True
-    except Exception as e:
-        log.info("read ssl_cfg exception : %s" % str(e))
+    except Exception as ex:
+        log.info("read ssl_cfg exception : %s" % str(ex))
         return True
 
 
@@ -449,8 +449,8 @@ def set_ssl_cfg(verify, force_tls1_2, ciphers, log):
                 str(verify), str(force_tls1_2), str(_ciphers)))
             log.info("set ssl_cfg sucessful")
             return True
-    except Exception as e:
-        log.error("set ssl_cfg failed, exception is : %s" % str(e))
+    except Exception as ex:
+        log.error("set ssl_cfg failed, exception is : %s" % str(ex))
     return False
 
 

@@ -79,6 +79,7 @@ def ibmc_get_power_status_module(module):
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
         if ret['result']:
+            ibmc.is_write_file = True
             ret = get_power_status(ibmc)
     return ret
 

@@ -14,6 +14,6 @@
       ibmc_ip: "{{ ibmc_ip }}"
       ibmc_user: "{{ ibmc_user }}"
       ibmc_pswd: "{{ ibmc_pswd }}"
-      url: "/redfish/v1/Chassis/1/Oem/xFusion/Actions/Chassis.ControlIndicatorLED"
-      request_method: "POST"
-      request_body: '{"IndicatorLED":"Blinking", "Duration":50}'
+      url: "/redfish/v1/EventService"
+      request_method: "GET"
+      request_body: '{}'

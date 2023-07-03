@@ -9,8 +9,11 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
+import os
 
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import write_result
 
 
 def manage_power(ibmc, command):
@@ -91,7 +94,15 @@ def get_power_status(ibmc):
     try:
         if response.status_code == 200:
             data = response.json()
-            log_msg = "get system power state successful! power status is :%s" % data[u'PowerState']
+            power_state = data[u'PowerState']
+            
+            if ibmc.is_write_file:
+                fw_info_dic = {'PowerState' : power_state}
+                filename = os.path.join(IBMC_REPORT_PATH,
+                                        "power_status/%s_power_status.json" % str(ibmc.ip))
+                write_result(ibmc, filename, fw_info_dic)
+    
+            log_msg = "get system power state successful! power status is :%s" % power_state
             set_result(ibmc.log_info, log_msg, True, rets)
             return rets
         else:

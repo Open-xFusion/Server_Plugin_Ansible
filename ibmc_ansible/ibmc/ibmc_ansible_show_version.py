@@ -29,7 +29,7 @@ EXAMPLES = r'''
 '''
 
 RETURNS = r'''
-    "msg": xFusion iBMC ansible modules version is 2.0.10
+    "msg": xFusion iBMC ansible modules version is 2.0.12
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -39,7 +39,7 @@ def main():
     module = AnsibleModule(
         argument_spec={},
         supports_check_mode=False)
-    module.exit_json(msg="xFusion iBMC ansible modules version is 2.0.10")
+    module.exit_json(msg="xFusion iBMC ansible modules version is 2.0.12")
 
 
 if __name__ == '__main__':

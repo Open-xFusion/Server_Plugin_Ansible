@@ -70,13 +70,30 @@ else:
         print("Installation failed!")
         sys.exit(1)
 
+if os.path.exists("{}/examples/".format(IBMC_EXCU_PATH)):
+    dirs = os.listdir("{}/examples/".format(IBMC_EXCU_PATH))
+    for yml_file in dirs:
+        if ".yml" in yml_file:
+            ret = subprocess.call(["rm", "-f", "{}/examples/{}".format(IBMC_EXCU_PATH, yml_file)], shell=False)
+            if ret != 0:
+                print("Failed to delete yml: {}/examples/{}".format(IBMC_EXCU_PATH, yml_file))
+
 ret = subprocess.call(["cp", "-r", "./examples", IBMC_EXCU_PATH], shell=False)
 if ret != 0:
     print("Failed to copy yml to %s" % IBMC_EXCU_PATH)
 
-ret = subprocess.call(["cp", "./ssl.cfg", IBMC_EXCU_PATH], shell=False)
-if ret != 0:
-    print("Failed to copyssl.cfg to %s" % IBMC_EXCU_PATH)
+if os.path.exists(os.path.join(IBMC_EXCU_PATH, 'ssl.cfg')):
+    print("The SSL configuration has been configured. Do you need to reconfigure it? (y/n)")
+    choice = input()
+    if choice in ['y', 'Y']:
+        ret = subprocess.call(["cp", "./ssl.cfg", IBMC_EXCU_PATH], shell=False)
+        if ret != 0:
+            print("Failed to copy ssl.cfg to %s" % IBMC_EXCU_PATH)
+else:
+    ret = subprocess.call(["cp", "./ssl.cfg", IBMC_EXCU_PATH], shell=False)
+    if ret != 0:
+        print("Failed to copy ssl.cfg to %s" % IBMC_EXCU_PATH)
+        sys.exit(1)
 
 if not os.path.exists(ibmc_utils_path):
     ret = subprocess.call(["mkdir", "-p", ibmc_utils_path], shell=False)

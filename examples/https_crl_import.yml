@@ -25,7 +25,7 @@
       ibmc_ip: "{{ ibmc_ip }}"
       ibmc_user: "{{ ibmc_user }}"
       ibmc_pswd: "{{ ibmc_pswd }}"
-      certpath: "/tmp/xFusionCA3.crl"
+      certpath: "/tmp/TestCA.crl"
       certID: 5
       # usage: "FileTransfer"
       import_location: "tmp"

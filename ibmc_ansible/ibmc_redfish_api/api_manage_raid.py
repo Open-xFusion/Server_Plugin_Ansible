@@ -1235,7 +1235,7 @@ def get_modify_oem(ibmc, volume):
     volume_name = get_volume_name(ibmc, volume)
     if volume_name.get('result') is False:
         return volume_name
-    elif volume_name.get('result') and not volume_name.get('msg') != '':
+    elif volume_name.get('result') and volume_name.get('msg') != '':
         oem["VolumeName"] = volume_name.get('msg')
 
     boot_enable = volume.get("boot_enable")
