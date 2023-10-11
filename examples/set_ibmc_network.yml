@@ -1,0 +1,141 @@
+---
+- hosts: myhosts
+  connection: local
+  name: set ibmc network
+  gather_facts: False
+
+# Public parameters:
+# ip_version: Whether IPv4/IPv6 is enabled, Available values: IPv4, IPv6, IPv4AndIPv6.
+# ipv4_subnet_mask: Subnet mask of the IPv4 address.
+# ipv4_gateway: Gateway of the IPv4 address.
+# ipv4_address_origin: How the IPv4 address is allocated. Available values: Static, DHCP.
+# ipv6_prefix_length: Prefix length of the IPv6 address, must be an integer, value range: 0 to 128.
+# ipv6_gateway: IPv6 gateway address of the iBMC network port.
+# ipv6_address_origin: How the IPv6 address is allocated. Available values: Static, DHCPv6.
+# vlan: iBMC network port VLAN information.
+  # vlan_enable: Specifies whether VLAN is enabled, must be a valid boolean.
+  # vlan_id: Ranges from 1 to 4094.
+# dns_address_origin: How DNS IP addresses are allocated. Available values: IPv4, Static, IPv6.
+# domain_name: Domain name. Contains a maximum of 67 characters. The format of FQDN is "hostname.domain_name".
+#              For example, if hostname is "hostname0" and domain_name is "ibmc.com", then FQDN is "hostname0.ibmc.com".
+#              NOTE: To view specific domain name format restrictions, please refer to iBMC's documentation
+#              or iBMC's redfish interface documentation.
+# name_servers: Addresses of the preferred and alternate DNS servers if iBMC network port addresses are
+#               dynamically allocated. The server IP address can be an IPv4 or IPv6 address.
+  # Format:
+  # IP address of the preferred DNS server.
+  # IP address of alternate DNS server 1.
+  # IP address of alternate DNS server 2.
+# network_port_mode: Network port mode. Available values: Fixed or Automatic.
+# management_network_port: Set the management network port.
+  # type: Network port type. Available values: Dedicated, Aggregation, LOM, ExternalPCIe, LOM2 or OCP.
+  # port_number: Silkscreen. NOTE: For a dedicated network port, this parameter indicates the serial number
+  #              of the port, not the silkscreen.
+# auto_mode_extend: Auto Mode Extensions. NOTE: The iBMC version must be iBMC V639 or later, and iBMC 3.03.07.17 or later.
+  # high_priority_mode: Enabling status of High Priority Port, must be a valid boolean.
+  # high_priority_port: High Priority Port.
+    # type: Port type. Available values: Dedicated, Aggregation, LOM, ExternalPCIe, LOM2 or OCP.
+    # port_number: Silkscreen.
+# adaptive_port: Autonegotiation of each network port.
+  # type: Network port type. Available values: Dedicated, Aggregation, LOM, ExternalPCIe, LOM2 or OCP.
+  # port_number: Silkscreen. NOTE: For a dedicated network port, this parameter indicates the serial number
+  #              of the port, not the silkscreen.
+  # adaptive_flag: Autonegotiation flag, must be a valid boolean.
+
+# Private parameters:
+# private_info_list: Private network information list.
+  # target_bmc_ip: ibmc_ip that you specify to set network information, and you can only choose from the group of hosts.
+  # hostname: iBMC HostName. Contains a maximum of 64 characters, including only letters, digits, and hyphens(-).
+  #           Cannot start or end with a hyphen.
+  # ip_version: The meaning and format is the same as the public parameter.
+  # ipv4_addr: IPv4 address information.
+    # address: IPv4 address.
+    # subnet_mask: Subnet mask of the IPv4 address.
+    # gateway: Gateway of the IPv4 address.
+    # address_origin: How the IPv4 address is allocated. Available values: Static, DHCP.
+  # ipv6_addr: IPv6 address information.
+    # address: IPv6 address.
+    # prefix_length: Prefix length of the IPv6 address, must be an integer, value range: 0 to 128.
+    # address_origin: How the IPv6 address is allocated. Available values: Static, DHCPv6.
+  # ipv6_gateway: The meaning and format is the same as the public parameter.
+  # vlan: The meaning and format is the same as the public parameter.
+  # dns_address_origin: The meaning and format is the same as the public parameter.
+  # domain_name: The meaning and format is the same as the public parameter.
+  # name_servers: The meaning and format is the same as the public parameter.
+  # network_port_mode: The meaning and format is the same as the public parameter.
+  # management_network_port: The meaning and format is the same as the public parameter.
+  # auto_mode_extend: The meaning and format is the same as the public parameter.
+  # adaptive_port: The meaning and format is the same as the public parameter.
+
+# NOTE: 1. When you set the public parameter and the private parameter,
+#          the private parameter overrides the public parameter,
+#          but if you don't set the private parameter, the public parameter is used.
+#       2. To view specific parameter description information, please refer to
+#          iBMC's documentation or iBMC's redfish interface documentation.
+
+  tasks:
+  - name: set ibmc network
+    ibmc_set_network:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
+      # Public parameters
+      ip_version: "IPv4AndIPv6"
+      ipv4_subnet_mask: "255.255.0.0"
+      ipv4_gateway: "192.168.0.1"
+      ipv4_address_origin: "Static"
+      ipv6_prefix_length: 7
+      ipv6_gateway: "fc00:192::1"
+      ipv6_address_origin: "Static"
+      vlan:
+        vlan_enable: true
+        vlan_id: 1
+      dns_address_origin: "Static"
+      domain_name: "ibmc.com"
+      name_servers:
+        - "192.168.10.254"
+        - "192.168.10.253"
+        - "192.168.10.252"
+      network_port_mode: "Fixed"
+      management_network_port:
+        type: "Dedicated"
+        port_number: 1
+      auto_mode_extend:
+        high_priority_mode: true
+        high_priority_port:
+          - type: "Dedicated"
+            port_number: 1
+      adaptive_port:
+        - type: "Dedicated"
+          port_number: 1
+          adaptive_flag: false
+      private_info_list:
+        # Private parameters
+        # The first ip address to be configured
+        - target_bmc_ip: "192.168.20.20"
+          hostname: "hostname1"
+          ipv4_addr:
+            - address: "192.168.30.30"
+              subnet_mask: "255.255.255.0"
+              gateway: "192.168.30.1"
+              address_origin: "Static"
+          ipv6_addr:
+            - address_origin: "DHCPv6"
+          vlan:
+            vlan_enable: false
+          dns_address_origin: "IPv6"
+          network_port_mode: "Automatic"
+          management_network_port:
+            type: "LOM"
+            port_number: 1
+          adaptive_port:
+            - type: "LOM2"
+              port_number: 1
+              adaptive_flag: true
+        # The second ip address to be configured
+        - target_bmc_ip: "192.168.40.40"
+          hostname: "hostname2"
+          ipv4_addr:
+            - address: "192.168.50.50"
+          ipv6_addr:
+            - address: "fc00:192::50"

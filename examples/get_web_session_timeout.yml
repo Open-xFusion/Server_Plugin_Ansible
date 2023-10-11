@@ -1,0 +1,13 @@
+---
+- hosts: myhosts
+  connection: local
+  name: get web session timeout
+  gather_facts: False
+
+
+  tasks:
+  - name: get web session timeout
+    ibmc_get_web_session_timeout :
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"

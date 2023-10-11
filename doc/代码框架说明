@@ -1,0 +1,22 @@
+代码目录说明：
+    examples                 ----存放playbook host参数文件
+    ibmc_ansible             ----utils log等公共文件
+       --ibmc                ----存放直接对接ansible的功能模块
+       --ibmc_redfish_api    ----对接ibmc 接口，以及具体功能的逻辑封装
+    test                     ----单元测试用文件
+    doc                      ----说明文档目录
+    
+
+执行目录说明：
+    IBMC_REPORT_PATH="/var/log/ansible/ibmc/report"   ----模块运行是生成的报告所在目录
+    IBMC_LOG_PATH="/var/log/ansible/ibmc/log"         ----模块运行是生成的日志所在目录
+    IBMC_EXCU_PATH="/home/ibmc_ansible"               ----模块卸载程序，playbook存放目录
+    $ansible_installed_path/moudules                  ----模块安装目录。根据ansible的安装目录自适应
+
+
+程序运行框架：
+    当客户执行ansible-playbook命令时，ibmc目录中的相应模块通过AnsibleModule对象被调用，利用ansible的机制从上层的playbook中解析出具体的执行参数
+    ibmc目录中的每个功能模块均生成一个ibmcBaseConnect对象，传到api层，api层通过该对象与ibmc交互
+    模块通过refish接口与ibmc交互，ibmcBaseConnect类封装了所有与ibmc通讯的功能，以及ibmc的session管理
+    api层所有功能均使用该类与ibmc交互，并封装自己的逻辑，形成特定的功能
+    ibmc目录中的每个功能模块的帮助记录在DOCUMENTATION，并且通过ansible-doc命令展示给用户

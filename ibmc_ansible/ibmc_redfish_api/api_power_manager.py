@@ -89,14 +89,14 @@ def get_power_status(ibmc):
     try:
         response = ibmc.request("GET", resource=uri, headers=headers, data=payload)
     except Exception as e:
-        ibmc.log_error("send get power state  exception; exception is: %s" % (str(e)))
-        raise Exception("send get power state  exception; exception is: %s" % (str(e)))
+        ibmc.log_error("send get power state exception; exception is: %s" % (str(e)))
+        raise Exception("send get power state exception; exception is: %s" % (str(e)))
     try:
         if response.status_code == 200:
             data = response.json()
             power_state = data[u'PowerState']
             
-            if ibmc.is_write_file:
+            if hasattr(ibmc, 'is_write_file') and ibmc.is_write_file:
                 fw_info_dic = {'PowerState' : power_state}
                 filename = os.path.join(IBMC_REPORT_PATH,
                                         "power_status/%s_power_status.json" % str(ibmc.ip))

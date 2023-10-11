@@ -7,7 +7,7 @@
 #OSType:Os type; Available values:RHEL6U9, RHEL6U10, RHEL7U3 ,RHEL7U4, RHEL7U5, RHEL7U6, CentOS6U9, CentOS6U10, CentOS7U3, CentOS7U4, CentOS7U5, CentOS7U6, ESXi6.0, ESXi6.5, ESXi6.7 
 # SLES11SP4, SLES12SP2, SLES12SP3, Ubuntu16.04, Ubuntu16.04.1, Ubuntu16.04.2, Win2016, Win2016 Standard Desktop, Win2016 Standard Core, Win2016 Datacenter Desktop
 # Win2016 Datacenter Core, Win2012_R2, Win2012_R2 Standard Desktop, Win2012_R2 Standard Core, Win2012_R2 Datacenter Desktop, Win2012_R2 Datacenter Core
-# EulerOSV2SP3
+# For more details about the servers supported by Smart Provisioning, see the Smart Provisioning User Guide.
 #InstallMode: OS Installation mode;  Available values:Recommended, Customized 
 #timezone: Available values: windows Format: (GMT-12:00) International Date Line West; centos,redhat,ubuntu Format:Africa/Abidjan;
 # SLES Format: Africa/Abidjan ; Please refer to the installation guide of the OS for more infomation.
