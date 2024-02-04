@@ -15,6 +15,10 @@ import os
 from ibmc_ansible.utils import set_result
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import RESULT, MSG
+
+MEMBERS = "Members"
+OEM = "Oem"
 
 
 def format_role_id(ibmc, role_id):
@@ -54,7 +58,7 @@ def get_accounts(ibmc):
     Args:
             ibmc:   IbmcBaseConnect Object
     Returns:
-        'result':True
+        'result': True
         'msg': "Account obtained successfully
         users list as follow: userid=2, userName=Administrator"
     Raises:
@@ -69,7 +73,7 @@ def get_accounts(ibmc):
 
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {}
-    ret = {'result': True, 'msg': 'itest'}
+    ret = {RESULT: True, MSG: 'itest'}
     filename = os.path.join(
         IBMC_REPORT_PATH, "account_info/%s_AccountInfo.json" % str(ibmc.ip))
 
@@ -78,7 +82,7 @@ def get_accounts(ibmc):
                          data=payload, tmout=10)
     except Exception as e:
         ibmc.log_error("Failed to get accounts! The error info is: %s" % str(e))
-        raise Exception("Failed to get accounts! The error info is: %s" % str(e))
+        raise e
 
     try:
         result = r.status_code
@@ -87,15 +91,15 @@ def get_accounts(ibmc):
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
 
-        if "Members" not in list(r.json().keys()):
+        if MEMBERS not in list(r.json().keys()):
             set_result(ibmc.log_info, "The account is empty.", True, ret)
             return ret
-        if len(r.json()["Members"]) < 0:
+        if len(r.json()[MEMBERS]) < 0:
             set_result(ibmc.log_info, "The account is empty.", True, ret)
             return ret
 
         list_json = []
-        for each_members in r.json()[u"Members"]:
+        for each_members in r.json()[MEMBERS]:
             uri = "https://%s%s" % (ibmc.ip, each_members["@odata.id"])
             r = ibmc.request('GET', resource=uri,
                              headers=headers, data=payload, tmout=10)
@@ -130,7 +134,7 @@ def save_file(ibmc, filename, list_json):
             "result": True or False
             "msg": description for success or failure
     """
-    ret = {'result': True, 'msg': 'itest'}
+    ret = {RESULT: True, MSG: 'itest'}
     oem_info = ibmc.oem_info
 
     for each_dic in list_json:
@@ -139,9 +143,9 @@ def save_file(ibmc, filename, list_json):
         each_dic.pop("@odata.id")
         each_dic.pop("@odata.context")
         each_dic.pop("Password")
-        each_dic["Oem"][oem_info].pop("SSHPublicKeyHash")
-        each_dic["Oem"][oem_info].pop("Actions")
-        each_dic["Oem"][oem_info].pop("MutualAuthClientCert")
+        each_dic[OEM][oem_info].pop("SSHPublicKeyHash")
+        each_dic[OEM][oem_info].pop("Actions")
+        each_dic[OEM][oem_info].pop("MutualAuthClientCert")
 
     write_result(ibmc, filename, list_json)
     log_msg = "Account obtained successfully. For more detail please refer to %s" % filename
@@ -170,18 +174,19 @@ def get_account_id(ibmc, username):
         r = ibmc.request('GET', resource=uri, headers=headers,
                          data=payload, tmout=10)
     except Exception as e:
-        log_error = "Failed to get account id! The error info is: %s" % str(e)
-        raise Exception(log_error)
+        ibmc.log_error("Failed to get account id! The error info is: %s" % str(e))
+        raise e
+    account_id = None
     try:
         result = r.status_code
         if result != 200:
-            return None
-        if "Members" not in list(r.json().keys()):
-            return None
-        if len(r.json()["Members"]) == 0:
-            return None
+            return account_id
+        if MEMBERS not in list(r.json().keys()):
+            return account_id
+        if len(r.json()[MEMBERS]) == 0:
+            return account_id
 
-        for each_members in r.json()[u"Members"]:
+        for each_members in r.json()[MEMBERS]:
             uri = "https://%s%s" % (ibmc.ip, each_members["@odata.id"])
             r = ibmc.request('GET', resource=uri,
                              headers=headers, data=payload, tmout=10)
@@ -196,9 +201,9 @@ def get_account_id(ibmc, username):
                 return each_json['Id']
 
     except Exception as e:
-        log_error = "Failed to get account id! The exception info is: %s" % str(e)
-        raise Exception(log_error)
-    return None
+        ibmc.log_error("Failed to get account id! The exception info is: %s" % str(e))
+        raise e
+    return account_id
 
 
 def delete_account(ibmc, username):
@@ -215,7 +220,7 @@ def delete_account(ibmc, username):
     Author: xwh
     Date: 10/19/2019
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     try:
         account_id = get_account_id(ibmc, username)
     except Exception as e:
@@ -253,13 +258,13 @@ def delete_account(ibmc, username):
     return ret
 
 
-def create_account(ibmc, new_account, new_password, role_id, id=None):
+def create_account(ibmc, new_account, new_password, role_id, user_id=None):
     """
     Args:
             new_account            (str):  user account
             new_password           (str):  new password
             role_id                (str):  roled id
-            id                     (str):  user id
+            user_id                (str):  user id
     Returns:
         "result": True
         "msg": "The account is created successfully!"
@@ -270,7 +275,7 @@ def create_account(ibmc, new_account, new_password, role_id, id=None):
     Author: xwh
     Date: 10/19/2019
     """
-    ret = {'result': False, 'msg': ''}
+    ret = {RESULT: False, MSG: ''}
 
     # Check whether the user name exists
     try:
@@ -289,10 +294,9 @@ def create_account(ibmc, new_account, new_password, role_id, id=None):
     uri = "%s/AccountService/Accounts/" % ibmc.root_uri
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
-    payload = {u"UserName": new_account, u"Password": new_password,
-               u"RoleId": role_id}
-    if id is not None:
-        payload["Id"] = id
+    payload = {u"UserName": new_account, u"Password": new_password, u"RoleId": role_id}
+    if user_id is not None:
+        payload["Id"] = user_id
 
     try:
         r = ibmc.request('POST', resource=uri,
@@ -337,7 +341,7 @@ def modify_account(ibmc, config_dic):
     """
     uri = "%s/AccountService/Accounts/" % ibmc.root_uri
 
-    ret = {'result': False, 'msg': ''}
+    ret = {RESULT: False, MSG: ''}
     (ord_account, change_message), = config_dic.items()
     if not ord_account:
         log_msg = "iBMC user info can not be found."
@@ -356,11 +360,13 @@ def modify_account(ibmc, config_dic):
     uri = uri + account_id
     payload = change_message
 
-    Etag = ibmc.get_etag(uri)
+    etag = ibmc.get_etag(uri)
     token = ibmc.get_token()
-    headers = {'content-type': 'application/json',
-               'X-Auth-Token': token, 'If-Match': Etag}
-    ret = {'result': True, 'msg': ''}
+    headers = {
+        'content-type': 'application/json',
+        'X-Auth-Token': token, 'If-Match': etag
+    }
+    ret = {RESULT: True, MSG: ''}
     try:
         r = ibmc.request('PATCH', resource=uri, headers=headers, data=payload, tmout=10)
     except Exception as e:

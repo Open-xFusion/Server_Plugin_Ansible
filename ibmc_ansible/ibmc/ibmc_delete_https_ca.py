@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = """
 module: ibmc_delete_https_ca
@@ -63,7 +65,7 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_redfish_api.api_https_cert_manage import delete_https_ca
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.utils import is_support_server
-from ibmc_ansible.utils import SERVERTYPE
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, INT
 from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
@@ -94,10 +96,10 @@ def ibmc_https_ca_delete_module(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "certID": {"required": True, "type": 'int'},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "certID": {REQUIRED: True, TYPE: INT},
         },
         supports_check_mode=False)
 

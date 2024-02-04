@@ -13,7 +13,7 @@
 import time
 import os
 
-from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import set_result, RESULT, MSG
 from ibmc_ansible.ibmc_redfish_api.api_manage_file import upload_file
 
 # File server type
@@ -49,9 +49,8 @@ def update_api(ibmc, file_path, protocol=None):
                          tmout=60)
         return r
     except Exception as e:
-        log_err = "update exception: %s" % (str(e))
-        ibmc.log_error(log_err)
-        raise Exception(log_err)
+        ibmc.log_error("update exception: %s" % (str(e)))
+        raise e
 
 
 def update_fw(ibmc, file_path, protocol=None, local=False):
@@ -72,12 +71,12 @@ def update_fw(ibmc, file_path, protocol=None, local=False):
     Date: 10/19/2019
     """
     # Initialize return information
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
 
     # Uploading a Local Firmware Package
     if local:
         upload_file_ret = upload_file(ibmc, file_path)
-        if upload_file_ret.get('result') is False:
+        if upload_file_ret.get(RESULT) is False:
             return upload_file_ret
         file_name = file_path.split("/")[-1]
         file_path = os.path.join("/tmp/web", file_name)

@@ -10,16 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-from ansible.module_utils.basic import AnsibleModule
-
-from ibmc_ansible.ibmc_logger import log
-from ibmc_ansible.ibmc_logger import report
-from ibmc_ansible.utils import is_support_server
-from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
-from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
-from ibmc_ansible.ibmc_redfish_api.api_manage_web_session import get_web_session_timeout
-
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -67,6 +57,16 @@ RETURNS = """
     {"result": True, "msg": "Get web session timeout successfully."}
 """
 
+from ansible.module_utils.basic import AnsibleModule
+
+from ibmc_ansible.ibmc_logger import log
+from ibmc_ansible.ibmc_logger import report
+from ibmc_ansible.utils import is_support_server
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG
+from ibmc_ansible.utils import ansible_ibmc_run_module
+from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
+from ibmc_ansible.ibmc_redfish_api.api_manage_web_session import get_web_session_timeout
+
 
 def ibmc_get_web_session_timeout(module):
     """
@@ -92,9 +92,9 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
         },
         supports_check_mode=False)
 

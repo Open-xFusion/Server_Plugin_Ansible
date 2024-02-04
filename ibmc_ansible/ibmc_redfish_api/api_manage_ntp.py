@@ -13,6 +13,7 @@
 import requests
 
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 from .api_manage_ibmc_ip import get_ibmc_ip_request
 
 NTP_DICT = {
@@ -25,6 +26,10 @@ NTP_DICT = {
 MIN_POLLING_INTERVAL = 3
 # Maximum polling interval
 MAX_POLLING_INTERVAL = 17
+
+IP_V4 = "IPv4"
+IP_V6 = "IPv6"
+STATIC = "Static"
 
 
 def set_ntp(ibmc, ntp_info):
@@ -54,7 +59,7 @@ def set_ntp(ibmc, ntp_info):
     max_polling_interval = ntp_info.get('max_polling_interval')
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Initialize payload
     payload = {}
 
@@ -96,7 +101,7 @@ def set_ntp(ibmc, ntp_info):
         rets = check_ip_version(ibmc, ntp_address_origin, current_ip_version,
                                 current_ipv4_addr_origin,
                                 current_ipv6_addr_origin)
-        if rets.get("result") is False:
+        if rets.get(RESULT) is False:
             return rets
         if ntp_address_origin in NTP_DICT.values():
             payload["NtpAddressOrigin"] = ntp_address_origin
@@ -110,7 +115,7 @@ def set_ntp(ibmc, ntp_info):
     try:
         rets = check_set_interval(ibmc, min_polling_interval,
                                   max_polling_interval)
-        if rets.get("result") is False:
+        if rets.get(RESULT) is False:
             return rets
         if min_polling_interval is not None:
             payload["MinPollingInterval"] = min_polling_interval
@@ -120,10 +125,10 @@ def set_ntp(ibmc, ntp_info):
         msg = "The min or max polling interval is illegal! The error info is: %s \n" % str(
             e)
         ibmc.log_error(msg)
-        raise ValueError(msg)
+        raise e
 
     # If the input parameter is empty, prompt the user to enter the correct parameter in the yml file
-    if payload == {}:
+    if not payload:
         log_msg = 'The parameter is empty, please enter the correct parameter in the set_ntp.yml file.'
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
@@ -148,7 +153,7 @@ def check_set_interval(ibmc, min_polling_interval, max_polling_interval):
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     if min_polling_interval is not None:
         # Verify min_polling_interval is an integer
@@ -203,36 +208,36 @@ def check_ip_version(ibmc, ntp_address_origin, current_ip_version,
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     if current_ip_version == "IPv4AndIPv6":
-        if ntp_address_origin == "IPv4" and current_ipv4_addr_origin == "Static":
+        if ntp_address_origin == IP_V4 and current_ipv4_addr_origin == STATIC:
             log_msg = 'The current IPv4 address origin is Static, cannot set ntp address origin to IPv4'
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
 
-        if ntp_address_origin == "IPv6" and current_ipv6_addr_origin == "Static":
+        if ntp_address_origin == IP_V6 and current_ipv6_addr_origin == STATIC:
             log_msg = 'The current IPv6 address origin is Static, cannot set ntp address origin to IPv6'
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
 
-    elif current_ip_version == "IPv4":
-        if ntp_address_origin == "IPv4" and current_ipv4_addr_origin == "Static":
+    elif current_ip_version == IP_V4:
+        if ntp_address_origin == IP_V4 and current_ipv4_addr_origin == STATIC:
             log_msg = 'The current IPv4 address origin is Static, cannot set ntp address origin to IPv4'
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
 
-        if ntp_address_origin == "IPv6":
+        if ntp_address_origin == IP_V6:
             log_msg = 'The current ip version is IPv4, cannot set ntp address origin to IPv6'
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
 
-    elif current_ip_version == "IPv6":
-        if ntp_address_origin == "IPv4":
+    elif current_ip_version == IP_V6:
+        if ntp_address_origin == IP_V4:
             log_msg = 'The current ip version is IPv6, cannot set ntp address origin to IPv4'
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
 
-        if ntp_address_origin == "IPv6" and current_ipv6_addr_origin == "Static":
+        if ntp_address_origin == IP_V6 and current_ipv6_addr_origin == STATIC:
             log_msg = 'The current IPv6 address origin is Static, cannot set ntp address origin to IPv6'
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
@@ -298,16 +303,15 @@ def set_ntp_request(ibmc, payload):
         None
     Date: 2019/10/12 21:13
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # URL of the NTP service
-    url = ibmc.manager_uri + "/NtpService"
+    url = "%s/NtpService" % ibmc.manager_uri
     # Obtain token
     token = ibmc.bmc_token
     # Obtain etag
     etag = ibmc.get_etag(url)
     # Initialize headers
-    headers = {'content-type': 'application/json', 'X-Auth-Token': token,
-               'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
     try:
         # Modify NTP configuration by PATCH method
         request_result = ibmc.request('PATCH', resource=url, headers=headers,
@@ -347,7 +351,7 @@ def get_ntp(ibmc):
     ibmc.log_info("Start get NTP configuration resource info...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Get the return result of the redfish interface
     request_result_json = get_ntp_request(ibmc)
@@ -365,9 +369,9 @@ def get_ntp(ibmc):
     }
 
     # Update ret
-    ret['result'] = True
+    ret[RESULT] = True
     ret[
-        'msg'] = "Get NTP configuration resource info successful! The NTP configuration resource info is: %s" % \
+        MSG] = "Get NTP configuration resource info successful! The NTP configuration resource info is: %s" % \
                  str(result)
 
     ibmc.log_info("Get NTP configuration resource info successful!")
@@ -390,7 +394,7 @@ def get_ntp_request(ibmc):
     token = ibmc.bmc_token
 
     # URL of the NTP service
-    url = ibmc.manager_uri + "/NtpService"
+    url = "%s/NtpService" % ibmc.manager_uri
 
     # Initialize headers
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}

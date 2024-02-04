@@ -19,6 +19,7 @@ from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import validate_ipv4
 from ibmc_ansible.utils import validate_ipv6
+from ibmc_ansible.utils import RESULT, MSG
 
 IP_DICT = {
     "ipv4andipv6": "IPv4AndIPv6",
@@ -51,6 +52,25 @@ MIN_PREFIX_LEN = 0
 # Maximum perfix length
 MAX_PREFIX_LEN = 128
 
+HOSTNAME = "hostname"
+FQDN = "FQDN"
+IP_V4 = "IPv4"
+IP_V6 = "IPv6"
+IP_VERSION = "ip_version"
+IP_VERSION_REDFISH = "IPVersion"
+IPV4_ADDR = "ipv4_addr"
+IPV6_ADDR = "ipv6_addr"
+IPV6_GATEWAY = "ipv6_gateway"
+VLAN = "vlan"
+DNS_ADDRESS_ORIGIN = "dns_address_origin"
+DOMAIN_NAME = "domain_name"
+NAME_SERVERS = "name_servers"
+NETWORK_PORT_MODE = "network_port_mode"
+MANAGEMENT_NETWORK_PORT = "management_network_port"
+AUTO_MODE_EXTEND = "auto_mode_extend"
+ADAPTIVE_PORT = "adaptive_port"
+HOST_NAME = "HostName"
+
 
 def set_ibmc_ip(ibmc, ip_info):
     """
@@ -74,32 +94,31 @@ def set_ibmc_ip(ibmc, ip_info):
     request_result_json = get_ibmc_ip_request(ibmc)
     try:
         current_ip = {}
-        curr_ip_version = request_result_json["Oem"][oem_info]["IPVersion"]
+        curr_ip_version = request_result_json["Oem"][oem_info][IP_VERSION_REDFISH]
         current_ip["curr_ip_version"] = curr_ip_version
-        current_ip["hostname"] = request_result_json.get("HostName")
+        current_ip[HOSTNAME] = request_result_json.get(HOST_NAME)
     except Exception as e:
-        log_error = "Get iBMC current ip failed! The error info is: %s \n" % str(e)
-        ibmc.log_error(log_error)
-        raise Exception(log_error) from e
+        ibmc.log_error("Get iBMC current ip failed! The error info is: %s \n" % str(e))
+        raise e
 
     # Check whether the user configuration is valid in advance.
     ip_info_check = check_information(ibmc, ip_info, current_ip)
-    if not ip_info_check.get('result'):
+    if not ip_info_check.get(RESULT):
         return ip_info_check
 
     # Obtain user-configured IP information
-    ip_version = ip_info.get('ip_version')
-    ipv4_addr = ip_info.get('ipv4_addr')
-    ipv6_addr = ip_info.get('ipv6_addr')
-    ipv6_gateway = ip_info.get('ipv6_gateway')
-    hostname = ip_info.get('hostname')
+    ip_version = ip_info.get(IP_VERSION)
+    ipv4_addr = ip_info.get(IPV4_ADDR)
+    ipv6_addr = ip_info.get(IPV6_ADDR)
+    ipv6_gateway = ip_info.get(IPV6_GATEWAY)
+    hostname = ip_info.get(HOSTNAME)
     domain_name = ip_info.get('domain_name')
 
     # Verify the legality of the IPv4 address, IPv6 address and IPv6 gateway
     verify_result = validate_ip_address(ibmc, ipv4_address_list=ipv4_addr,
                                         ipv6_address_list=ipv6_addr,
                                         ipv6_gateway=ipv6_gateway)
-    if not verify_result.get('result'):
+    if not verify_result.get(RESULT):
         return verify_result
 
     # Initialize payload
@@ -114,11 +133,11 @@ def set_ibmc_ip(ibmc, ip_info):
         ip_addr_payload['HostName'] = hostname
     if domain_name:
         if hostname:
-            ip_addr_payload['FQDN'] = hostname + '.' + domain_name
-        elif current_ip.get("hostname"):
-            ip_addr_payload['FQDN'] = current_ip.get("hostname") + "." + domain_name
+            ip_addr_payload[FQDN] = hostname + '.' + domain_name
+        elif current_ip.get(HOSTNAME):
+            ip_addr_payload[FQDN] = current_ip.get(HOSTNAME) + "." + domain_name
         else:
-            ip_addr_payload['FQDN'] = domain_name
+            ip_addr_payload[FQDN] = domain_name
             log_msg = "The host name is empty. Setting the domain name assigns \
                       the first field of the domain name to the host name."
             ibmc.log_info(log_msg)
@@ -142,7 +161,7 @@ def set_ip_result(ibmc, ip_address_payload, ip_version, current_ip_version):
             "msg": description for success or failure
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     oem_info = ibmc.oem_info
     # parameter in the yml file
     prepare_change_version = False
@@ -152,7 +171,7 @@ def set_ip_result(ibmc, ip_address_payload, ip_version, current_ip_version):
         if ip_version is not None and ip_version != current_ip_version:
             if current_ip_version != "IPv4AndIPv6":
                 prepare_ret = prepare_ip_version(ibmc)
-                if not prepare_ret.get("result"):
+                if not prepare_ret.get(RESULT):
                     return prepare_ret
 
                 prepare_change_version = True
@@ -161,12 +180,12 @@ def set_ip_result(ibmc, ip_address_payload, ip_version, current_ip_version):
         ret = set_ibmc_ip_request(ibmc, ip_address_payload, log_massage)
 
     # If the setting fails, restore IP_version.
-    if not ret.get('result'):
+    if not ret.get(RESULT):
         if prepare_change_version:
             log_info = "Failed to change IP_addr. Restore IP_version."
             ibmc.log_info(log_info)
             restore_res = restore_ip_version(ibmc, current_ip_version)
-            if not restore_res.get('result'):
+            if not restore_res.get(RESULT):
                 log_error = "Failed to change IP_addr! Failed to restore IP_version!"
                 set_result(ibmc.log_error, log_error, False, ret)
                 return ret
@@ -179,11 +198,11 @@ def set_ip_result(ibmc, ip_address_payload, ip_version, current_ip_version):
         version_msg = "Set ip_version successful"
         set_result(ibmc.log_info, version_msg, True, ret)
     else:
-        ip_version_payload = {"Oem": {oem_info: {"IPVersion": ip_version}}}
+        ip_version_payload = {"Oem": {oem_info: {IP_VERSION_REDFISH: ip_version}}}
         ret = set_ibmc_ip_request(ibmc, ip_version_payload,
-                                  log_massage="ip_version")
+                                  log_massage=IP_VERSION)
 
-        if not ret.get('result'):
+        if not ret.get(RESULT):
             return ret
 
     if ip_version and ip_address_payload:
@@ -208,8 +227,7 @@ def prepare_ip_version(ibmc):
                "prepare for the change of ip_addr."
     ibmc.log_info(log_info)
     ip_prepare_version = "IPv4AndIPv6"
-    payload_prepare = {
-        "Oem": {oem_info: {"IPVersion": ip_prepare_version}}}
+    payload_prepare = {"Oem": {oem_info: {IP_VERSION_REDFISH: ip_prepare_version}}}
     ret = set_ibmc_ip_request(ibmc, payload_prepare, log_massage="preparing")
     return ret
 
@@ -227,7 +245,7 @@ def restore_ip_version(ibmc, current_ip_version):
             "msg": description for success or failure
     """
     oem_info = ibmc.oem_info
-    restore_payload = {"Oem": {oem_info: {"IPVersion": current_ip_version}}}
+    restore_payload = {"Oem": {oem_info: {IP_VERSION_REDFISH: current_ip_version}}}
     ret = set_ibmc_ip_request(ibmc, restore_payload, "ip_version restoring")
 
     return ret
@@ -246,17 +264,17 @@ def check_information(ibmc, ip_information, current_ip):
             "result": True or False
             "msg": description for success or failure
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     log_error = None
 
     # Obtain user-configured IP information
-    ip_version = ip_information.get('ip_version')
+    ip_version = ip_information.get(IP_VERSION)
     ip_version = IP_DICT.get(str(ip_version).lower())
-    ipv4_addr = ip_information.get('ipv4_addr')
-    ipv6_addr = ip_information.get('ipv6_addr')
-    ipv6_gateway = ip_information.get('ipv6_gateway')
+    ipv4_addr = ip_information.get(IPV4_ADDR)
+    ipv6_addr = ip_information.get(IPV6_ADDR)
+    ipv6_gateway = ip_information.get(IPV6_GATEWAY)
     current_version = current_ip.get("curr_ip_version")
-    hostname = ip_information.get('hostname')
+    hostname = ip_information.get(HOSTNAME)
     domain_name = ip_information.get('domain_name')
 
     # If the input parameter is empty, prompt the user to enter the correct
@@ -269,30 +287,30 @@ def check_information(ibmc, ip_information, current_ip):
 
     # If IP_version is not modified, ensure that the current IP_version supports the modified IP_addr.
     if not ip_version:
-        if current_version == "IPv4" and (ipv6_addr or ipv6_gateway):
+        if current_version == IP_V4 and (ipv6_addr or ipv6_gateway):
             log_error = "The current IP_version is IPv4 enabled. " \
                         "The ipv6_addr or ipv6_gateway cannot be set." \
                         " Please reconfigure the setting."
-        elif current_version == "IPv6" and ipv4_addr:
+        elif current_version == IP_V6 and ipv4_addr:
             log_error = "The current IP_version is IPv6 enabled. " \
                         "The ipv4_addr cannot be set." \
                         " Please reconfigure the setting."
 
     # Ensure that the modified ip_version supports the modified ip_addr.
-    elif ip_version == "IPv4":
+    elif ip_version == IP_V4:
         if ipv6_addr or ipv6_gateway:
             log_error = "When IP_version is set to IPv4, the setting of ipv6_addr " \
                         "or ipv6_gateway becomes invalid and cannot continue." \
                         " Please reconfigure the setting."
-        elif (not ipv4_addr) and (current_version == "IPv6"):
+        elif (not ipv4_addr) and (current_version == IP_V6):
             log_error = "The current IPv4_addr does not exist. Please configure an IPv4_addr. "
 
-    elif ip_version == "IPv6":
+    elif ip_version == IP_V6:
         if ipv4_addr:
             log_error = "When IP_version is set to IPv6, the setting of ipv4_addr " \
                         " becomes invalid and cannot continue." \
                         " Please reconfigure the setting."
-        elif (not ipv6_addr) and (current_version == "IPv4"):
+        elif (not ipv6_addr) and (current_version == IP_V4):
             log_error = "The current IPv6_addr does not exist. Please configure an IPv6_addr. "
 
     elif ip_version != "IPv4AndIPv6":
@@ -321,12 +339,12 @@ def set_ibmc_ip_request(ibmc, payload, log_massage):
             "msg": description for success or failure
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Obtain ethernet interface_id
     ethernet_interface_id = get_ethernet_interface_id(ibmc)
     if not ethernet_interface_id:
-        ret['result'] = False
-        ret['msg'] = 'Set iBMC ethernet interface info failed!'
+        ret[RESULT] = False
+        ret[MSG] = 'Set iBMC ethernet interface info failed!'
         return ret
     # URL of the iBMC network port information
     url = "%s/EthernetInterfaces/%s" % (ibmc.manager_uri, ethernet_interface_id)
@@ -335,8 +353,7 @@ def set_ibmc_ip_request(ibmc, payload, log_massage):
     # Obtain the token information of the iBMC
     token = ibmc.bmc_token
     # Initialize headers
-    headers = {'content-type': 'application/json', 'X-Auth-Token': token,
-               'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
     try:
         # Modify iBMC ip version by PATCH method
         request_result = ibmc.request('PATCH', resource=url, headers=headers,
@@ -394,7 +411,7 @@ def get_ibmc_ip(ibmc):
     ibmc.log_info("Start get iBMC ip...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # File to save iBMC network port information
     result_file = os.path.join(IBMC_REPORT_PATH, "ibmc_ip",
                                "%s_iBMCIPInfo.json" % str(ibmc.ip))
@@ -405,8 +422,8 @@ def get_ibmc_ip(ibmc):
     # Write the result to a file
     result = {
         "PermanentMACAddress": request_result_json.get("PermanentMACAddress"),
-        "HostName": request_result_json.get("HostName"),
-        "FQDN": request_result_json.get("FQDN"),
+        HOST_NAME: request_result_json.get(HOST_NAME),
+        FQDN: request_result_json.get(FQDN),
         "VLAN": request_result_json.get("VLAN"),
         "NameServers": request_result_json.get("NameServers"),
         "IPv4Addresses": request_result_json.get("IPv4Addresses"),
@@ -418,9 +435,9 @@ def get_ibmc_ip(ibmc):
     write_result(ibmc, result_file, result)
 
     # Update ret
-    ret['result'] = True
-    ret['msg'] = "Get iBMC ethernet interface info successful! " \
-                 "For more detail information please refer to %s." % result_file
+    ret[RESULT] = True
+    ret[MSG] = "Get iBMC ethernet interface info successful! " \
+               "For more detail information please refer to %s." % result_file
 
     ibmc.log_info("Get iBMC ethernet interface info successful!")
     return ret
@@ -503,7 +520,7 @@ def validate_ip_address(ibmc, ipv4_address_list=None, ipv6_address_list=None, ip
     Date: 2019/10/8 15:55
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # if IPv4 address info is not None
     if ipv4_address_list:
         # Determine the data type of IPv4 address info
@@ -638,7 +655,7 @@ def get_ethernet_interface_id(ibmc):
     ethernet_interface_id = None
 
     # URL of the network port collection information
-    url = ibmc.manager_uri + "/EthernetInterfaces"
+    url = "%s/EthernetInterfaces" % ibmc.manager_uri
 
     try:
         # Obtain the network port collection information of the manager resource through the GET method
@@ -747,7 +764,7 @@ def set_network_info(ibmc, public_info, private_info=None):
         private_info = {}
     ibmc.log_info("Start set iBMC network information...")
 
-    ret = {'result': True, 'msg': 'not set network information yet'}
+    ret = {RESULT: True, MSG: 'not set network information yet'}
     # Get the current network information: ip_version, hostname, auto_mode_extend
     oem_info = ibmc.oem_info
     try:
@@ -763,46 +780,46 @@ def set_network_info(ibmc, public_info, private_info=None):
     # check ip_version and ip_addr
     # Setting "hostname": "test" for being compatible with previous function--set_ibmc_ip
     network_info = {
-        "ip_version": combine_info.get("ip_version"), "ipv4_addr": combine_info.get("ipv4_addr"),
-        "ipv6_addr": combine_info.get("ipv6_addr"), "ipv6_gateway": combine_info.get("ipv6_gateway"), "hostname": "test"
+        IP_VERSION: combine_info.get(IP_VERSION), IPV4_ADDR: combine_info.get(IPV4_ADDR),
+        IPV6_ADDR: combine_info.get(IPV6_ADDR), IPV6_GATEWAY: combine_info.get(IPV6_GATEWAY), HOSTNAME: "test"
     }
     check_result = check_information(ibmc, network_info, current_network_info)
-    if not check_result.get("result"):
+    if not check_result.get(RESULT):
         return check_result
 
     # Verify the legality of the IPv4 address, IPv6 address and IPv6 gateway
-    verify_result = validate_ip_address(ibmc, ipv4_address_list=combine_info.get("ipv4_addr"),
-                                        ipv6_address_list=combine_info.get("ipv6_addr"),
-                                        ipv6_gateway=combine_info.get("ipv6_gateway"))
-    if not verify_result.get('result'):
+    verify_result = validate_ip_address(ibmc, ipv4_address_list=combine_info.get(IPV4_ADDR),
+                                        ipv6_address_list=combine_info.get(IPV6_ADDR),
+                                        ipv6_gateway=combine_info.get(IPV6_GATEWAY))
+    if not verify_result.get(RESULT):
         return verify_result
 
     # assemble parameters to payload and oem
     payload = assemble_to_payload(ibmc, combine_info, current_network_info)
 
     try:
-        oem_dict = assemble_to_oem(combine_info)
+        oem_dict = assemble_to_oem(ibmc, combine_info)
     except ValueError as e:
         log_msg = "Property value not in list: %s" % str(e)
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
 
-    if not payload and not oem_dict and not combine_info.get("ip_version"):
+    if not payload and not oem_dict and not combine_info.get(IP_VERSION):
         log_msg = 'There is no network information to be modified for the current host.'
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
 
     if oem_dict:
         payload["Oem"] = {oem_info: oem_dict}
-    if combine_info.get("ip_version"):
-        combine_info["ip_version"] = IP_DICT.get(str(combine_info.get("ip_version")).lower())
+    if combine_info.get(IP_VERSION):
+        combine_info[IP_VERSION] = IP_DICT.get(str(combine_info.get(IP_VERSION)).lower())
 
     # if address information hasn't been set, then it only takes one patch
     if payload.get("IPv4Addresses") or payload.get("IPv6Addresses") or payload.get("IPv6DefaultGateway"):
-        ret = set_ip_result(ibmc, payload, combine_info.get("ip_version"), current_network_info.get("curr_ip_version"))
+        ret = set_ip_result(ibmc, payload, combine_info.get(IP_VERSION), current_network_info.get("curr_ip_version"))
     else:
-        if combine_info.get("ip_version"):
-            oem_dict["IPVersion"] = combine_info.get("ip_version")
+        if combine_info.get(IP_VERSION):
+            oem_dict[IP_VERSION_REDFISH] = combine_info.get(IP_VERSION)
             # if oem_dict was None before, it won't be added to payload, so it must be updated.
             payload["Oem"] = {oem_info: oem_dict}
         ret = set_ibmc_ip_request(ibmc, payload, log_massage="ethernet interface")
@@ -818,8 +835,8 @@ def get_current_network_info(ibmc):
     request_result_json = get_ibmc_ip_request(ibmc)
     current_network_info = {
         "auto_mode_extend_enable": False,
-        "curr_ip_version": request_result_json["Oem"][oem_info]["IPVersion"],
-        "hostname": request_result_json["HostName"]
+        "curr_ip_version": request_result_json["Oem"][oem_info][IP_VERSION_REDFISH],
+        HOSTNAME: request_result_json[HOST_NAME]
     }
     if request_result_json["Oem"][oem_info].get("AutoModeExtend"):
         current_network_info["auto_mode_extend_enable"] = True
@@ -835,33 +852,33 @@ def combine_public_and_private(ibmc, public_info, current_network_info, private_
     if private_info is None:
         private_info = {}
     combine_info = {
-        "ip_version": private_info.get("ip_version")
-        if private_info.get("ip_version") is not None
-        else public_info.get("ip_version")
+        IP_VERSION: private_info.get(IP_VERSION)
+        if private_info.get(IP_VERSION) is not None
+        else public_info.get(IP_VERSION)
     }
     # if the private information is not None, then use private parameters, otherwise use public parameters
     # combine to ipv4_addr
     ipv4_subnet_mask = public_info.get("ipv4_subnet_mask")
     ipv4_gateway = public_info.get("ipv4_gateway")
     ipv4_address_origin = public_info.get("ipv4_address_origin")
-    combine_info["ipv4_addr"] = combine_ipv4_addr_list(private_info.get("ipv4_addr"),
-                                                       public_subnet_mask=ipv4_subnet_mask,
-                                                       public_gateway=ipv4_gateway,
-                                                       public_address_origin=ipv4_address_origin)
+    combine_info[IPV4_ADDR] = combine_ipv4_addr_list(private_info.get(IPV4_ADDR),
+                                                     public_subnet_mask=ipv4_subnet_mask,
+                                                     public_gateway=ipv4_gateway,
+                                                     public_address_origin=ipv4_address_origin)
     # combine to ipv6_addr
     ipv6_prefix_length = public_info.get("ipv6_prefix_length")
     ipv6_address_origin = public_info.get("ipv6_address_origin")
-    combine_info.update(combine_ipv6_addr_list(private_info.get("ipv6_addr"),
+    combine_info.update(combine_ipv6_addr_list(private_info.get(IPV6_ADDR),
                                                public_prefix_length=ipv6_prefix_length,
                                                public_address_origin=ipv6_address_origin,
                                                public_gateway=public_info.get(
-                                                   "ipv6_gateway"),
+                                                   IPV6_GATEWAY),
                                                private_gateway=private_info.get(
-                                                   "ipv6_gateway")))
-    combine_info["hostname"] = private_info.get("hostname")
-    combine_info["vlan"] = private_info.get("vlan") \
-        if private_info.get("vlan") is not None \
-        else public_info.get("vlan")
+                                                   IPV6_GATEWAY)))
+    combine_info[HOSTNAME] = private_info.get(HOSTNAME)
+    combine_info[VLAN] = private_info.get(VLAN) \
+        if private_info.get(VLAN) is not None \
+        else public_info.get(VLAN)
     combine_info.update(combine_to_dns(public_info, private_info))
     combine_info.update(combine_to_oem(ibmc, public_info, current_network_info, private_info))
 
@@ -875,21 +892,21 @@ def combine_to_dns(public_info, private_info=None):
     if private_info is None:
         private_info = {}
     dns_dict = {}
-    private_dns_address_origin = private_info.get("dns_address_origin")
-    public_dns_address_origin = public_info.get("dns_address_origin")
-    dns_dict["dns_address_origin"] = private_dns_address_origin
-    dns_dict["domain_name"] = private_info.get("domain_name")
-    dns_dict["name_servers"] = private_info.get("name_servers")
+    private_dns_address_origin = private_info.get(DNS_ADDRESS_ORIGIN)
+    public_dns_address_origin = public_info.get(DNS_ADDRESS_ORIGIN)
+    dns_dict[DNS_ADDRESS_ORIGIN] = private_dns_address_origin
+    dns_dict[DOMAIN_NAME] = private_info.get(DOMAIN_NAME)
+    dns_dict[NAME_SERVERS] = private_info.get(NAME_SERVERS)
     if str(private_dns_address_origin).lower() != "ipv4" \
             and str(private_dns_address_origin).lower() != "ipv6":
-        if dns_dict.get("domain_name") is None:
-            dns_dict["domain_name"] = public_info.get("domain_name")
-        if dns_dict.get("name_servers") is None:
-            dns_dict["name_servers"] = public_info.get("name_servers")
+        if dns_dict.get(DOMAIN_NAME) is None:
+            dns_dict[DOMAIN_NAME] = public_info.get(DOMAIN_NAME)
+        if dns_dict.get(NAME_SERVERS) is None:
+            dns_dict[NAME_SERVERS] = public_info.get(NAME_SERVERS)
     if (private_dns_address_origin is None) and \
             (str(public_dns_address_origin).lower() != "ipv4") and \
             (str(public_dns_address_origin).lower() != "ipv6"):
-        dns_dict["dns_address_origin"] = public_dns_address_origin
+        dns_dict[DNS_ADDRESS_ORIGIN] = public_dns_address_origin
     return dns_dict
 
 
@@ -900,24 +917,24 @@ def combine_to_oem(ibmc, public_info, current_network_info, private_info=None):
     if private_info is None:
         private_info = {}
     combine_oem = {
-        "network_port_mode": private_info.get("network_port_mode")
-        if private_info.get("network_port_mode") is not None
-        else public_info.get("network_port_mode"),
-        "management_network_port": private_info.get("management_network_port")
-        if private_info.get("management_network_port") is not None
-        else public_info.get("management_network_port"),
-        "adaptive_port": private_info.get("adaptive_port")
-        if private_info.get("adaptive_port") is not None
-        else public_info.get("adaptive_port"),
+        NETWORK_PORT_MODE: private_info.get(NETWORK_PORT_MODE)
+        if private_info.get(NETWORK_PORT_MODE) is not None
+        else public_info.get(NETWORK_PORT_MODE),
+        MANAGEMENT_NETWORK_PORT: private_info.get(MANAGEMENT_NETWORK_PORT)
+        if private_info.get(MANAGEMENT_NETWORK_PORT) is not None
+        else public_info.get(MANAGEMENT_NETWORK_PORT),
+        ADAPTIVE_PORT: private_info.get(ADAPTIVE_PORT)
+        if private_info.get(ADAPTIVE_PORT) is not None
+        else public_info.get(ADAPTIVE_PORT),
     }
 
     if not current_network_info.get("auto_mode_extend_enable") \
-            and (private_info.get("auto_mode_extend") or public_info.get("auto_mode_extend")):
+            and (private_info.get(AUTO_MODE_EXTEND) or public_info.get(AUTO_MODE_EXTEND)):
         ibmc.log_warn("The ibmc version of this server does not support Auto Mode Extensions. ")
     if current_network_info.get("auto_mode_extend_enable"):
-        combine_oem["auto_mode_extend"] = private_info.get("auto_mode_extend") \
-            if private_info.get("auto_mode_extend") is not None \
-            else public_info.get("auto_mode_extend")
+        combine_oem[AUTO_MODE_EXTEND] = private_info.get(AUTO_MODE_EXTEND) \
+            if private_info.get(AUTO_MODE_EXTEND) is not None \
+            else public_info.get(AUTO_MODE_EXTEND)
     return combine_oem
 
 
@@ -982,7 +999,7 @@ def combine_ipv6_addr_list(ipv6_addresses, public_prefix_length, public_address_
         ipv6_addr_dict = combine_ipv6(public_prefix_length, public_address_origin)
         if ipv6_addr_dict:
             ipv6_addr_ret.append(ipv6_addr_dict)
-        return {"ipv6_addr": ipv6_addr_ret, "ipv6_gateway": public_gateway}
+        return {IPV6_ADDR: ipv6_addr_ret, IPV6_GATEWAY: public_gateway}
 
     # if private ipv6 addresses information have been set
     gateway = private_gateway
@@ -1001,7 +1018,7 @@ def combine_ipv6_addr_list(ipv6_addresses, public_prefix_length, public_address_
         ipv6_addr_dict = combine_ipv6(prefix_length, address_origin, ipv6_address.get("address"))
         if ipv6_addr_dict:
             ipv6_addr_ret.append(ipv6_addr_dict)
-    return {"ipv6_addr": ipv6_addr_ret, "ipv6_gateway": gateway}
+    return {IPV6_ADDR: ipv6_addr_ret, IPV6_GATEWAY: gateway}
 
 
 def combine_ipv6(prefix_length, address_origin, address=None):
@@ -1026,48 +1043,48 @@ def assemble_to_payload(ibmc, combine_info, current_network_info):
     Returns: payload
     """
     payload = {}
-    if combine_info.get("hostname"):
-        payload["HostName"] = combine_info.get("hostname")
-    if combine_info.get("domain_name") is not None:
+    if combine_info.get(HOSTNAME):
+        payload[HOST_NAME] = combine_info.get(HOSTNAME)
+    if combine_info.get(DOMAIN_NAME) is not None:
         # Domain name can be null, FQDN can be "host0."
-        domain_name = combine_info.get("domain_name")
-        if payload.get("HostName") is not None:
-            payload['FQDN'] = payload.get("HostName") + '.' + domain_name
-        elif current_network_info.get("hostname") is not None:
-            payload['FQDN'] = current_network_info.get("hostname") + "." + domain_name
+        domain_name = combine_info.get(DOMAIN_NAME)
+        if payload.get(HOST_NAME) is not None:
+            payload[FQDN] = payload.get(HOST_NAME) + '.' + domain_name
+        elif current_network_info.get(HOSTNAME) is not None:
+            payload[FQDN] = current_network_info.get(HOSTNAME) + "." + domain_name
         else:
-            payload['FQDN'] = domain_name
+            payload[FQDN] = domain_name
             log_msg = "The host name is empty. Setting the domain name assigns \
                       the first field of the domain name to the host name."
             ibmc.log_warn(log_msg)
-    if combine_info.get("vlan"):
-        vlan_format = convert_vlan(combine_info.get("vlan"))
+    if combine_info.get(VLAN):
+        vlan_format = convert_vlan(combine_info.get(VLAN))
         if vlan_format:
             payload["VLAN"] = vlan_format
-    if combine_info.get("name_servers"):
+    if combine_info.get(NAME_SERVERS):
         name_servers_temp = []
-        for name_server in combine_info.get("name_servers"):
+        for name_server in combine_info.get(NAME_SERVERS):
             if name_server is not None and name_server != 'None':
                 # Name server can be null. And when the type of list element is string, ansible will convert None(
                 # type NoneType) to 'None'(type string).
                 name_servers_temp.append(name_server)
         if name_servers_temp:
             payload["NameServers"] = name_servers_temp
-    if combine_info.get("ipv4_addr"):
-        ipv4_addr_format = convert_ipv4_addr(combine_info.get("ipv4_addr"))
+    if combine_info.get(IPV4_ADDR):
+        ipv4_addr_format = convert_ipv4_addr(combine_info.get(IPV4_ADDR))
         if ipv4_addr_format:
             payload['IPv4Addresses'] = ipv4_addr_format
-    if combine_info.get("ipv6_addr"):
-        ipv6_addr_format = convert_ipv6_addr(combine_info.get("ipv6_addr"))
+    if combine_info.get(IPV6_ADDR):
+        ipv6_addr_format = convert_ipv6_addr(combine_info.get(IPV6_ADDR))
         if ipv6_addr_format:
             payload['IPv6Addresses'] = ipv6_addr_format
-    if combine_info.get("ipv6_gateway"):
-        payload['IPv6DefaultGateway'] = combine_info.get("ipv6_gateway")
+    if combine_info.get(IPV6_GATEWAY):
+        payload['IPv6DefaultGateway'] = combine_info.get(IPV6_GATEWAY)
 
     return payload
 
 
-def assemble_to_oem(combine_info):
+def assemble_to_oem(ibmc, combine_info):
     """
     Function: Extract oem information to oem_dict from combine information
 
@@ -1075,26 +1092,26 @@ def assemble_to_oem(combine_info):
     """
     oem_dict = {}
     # Firstly check if it's in the dictionary, then convert it to standard format
-    if combine_info.get("network_port_mode"):
-        network_port_mode = combine_info.get("network_port_mode")
+    if combine_info.get(NETWORK_PORT_MODE):
+        network_port_mode = combine_info.get(NETWORK_PORT_MODE)
         if str(network_port_mode).lower() not in MODE_DICT:
             raise ValueError("The network port mode is incorrect, it should be 'Fixed' or 'Automatic'.")
         oem_dict["NetworkPortMode"] = MODE_DICT.get(str(network_port_mode).lower())
-    if combine_info.get("dns_address_origin"):
-        dns_address_origin = combine_info.get("dns_address_origin")
+    if combine_info.get(DNS_ADDRESS_ORIGIN):
+        dns_address_origin = combine_info.get(DNS_ADDRESS_ORIGIN)
         if str(dns_address_origin).lower() not in DNS_ADDRESS_ORIGIN_DICT:
             raise ValueError("The DNS address origin is incorrect, it should be 'IPv4', 'IPv6' or 'Static'.")
         oem_dict["DNSAddressOrigin"] = DNS_ADDRESS_ORIGIN_DICT.get(str(dns_address_origin).lower())
-    if combine_info.get("management_network_port"):
-        mnp_format = convert_management_network_port(combine_info.get("management_network_port"))
+    if combine_info.get(MANAGEMENT_NETWORK_PORT):
+        mnp_format = convert_management_network_port(combine_info.get(MANAGEMENT_NETWORK_PORT))
         if mnp_format:
             oem_dict["ManagementNetworkPort"] = mnp_format
-    if combine_info.get("adaptive_port"):
-        ap_format = convert_adaptive_port(combine_info.get("adaptive_port"))
+    if combine_info.get(ADAPTIVE_PORT):
+        ap_format = convert_adaptive_port(ibmc, combine_info.get(ADAPTIVE_PORT))
         if ap_format:
             oem_dict["AdaptivePort"] = ap_format
-    if combine_info.get("auto_mode_extend"):
-        ame_format = convert_auto_mode_extend(combine_info.get("auto_mode_extend"))
+    if combine_info.get(AUTO_MODE_EXTEND):
+        ame_format = convert_auto_mode_extend(ibmc, combine_info.get(AUTO_MODE_EXTEND))
         if ame_format:
             oem_dict["AutoModeExtend"] = ame_format
     return oem_dict
@@ -1135,11 +1152,12 @@ def convert_management_network_port(management_network_port):
     return mnp_ret
 
 
-def convert_adaptive_port(adaptive_port_list):
+def convert_adaptive_port(ibmc, adaptive_port_list):
     """
     Function: Convert adaptive_port format
 
     Args:
+        ibmc : Class that contains basic information about iBMC
         adaptive_port_list: list
     """
     ap_ret_list = []
@@ -1148,8 +1166,9 @@ def convert_adaptive_port(adaptive_port_list):
         try:
             port_dict = convert_management_network_port(adaptive_port_dict)
         except ValueError as e:
-            raise ValueError("'The adaptive port type is incorrect, it should be 'Dedicated', 'Aggregation', "
-                             "'LOM', 'ExternalPCIe', 'LOM2' or 'OCP'. ") from e
+            ibmc.log_error("'The adaptive port type is incorrect, it should be 'Dedicated', 'Aggregation', "
+                             "'LOM', 'ExternalPCIe', 'LOM2' or 'OCP'. ")
+            raise e
         ap_ret_dict.update(port_dict)
         if adaptive_port_dict.get("adaptive_flag") is not None:
             ap_ret_dict["AdaptiveFlag"] = adaptive_port_dict["adaptive_flag"]
@@ -1158,11 +1177,12 @@ def convert_adaptive_port(adaptive_port_list):
     return ap_ret_list
 
 
-def convert_auto_mode_extend(auto_mode_extend):
+def convert_auto_mode_extend(ibmc, auto_mode_extend):
     """
     Function: Convert auto_mode_extend format
 
     Args:
+        ibmc : Class that contains basic information about iBMC
         auto_mode_extend: dict
     """
     ame_ret = {}
@@ -1176,8 +1196,9 @@ def convert_auto_mode_extend(auto_mode_extend):
             try:
                 hpp_ret_dict = convert_management_network_port(high_priority_port)
             except ValueError as e:
-                raise ValueError("The high priority port type is incorrect, it should be 'Dedicated', 'Aggregation', "
-                                 "'LOM', 'ExternalPCIe', 'LOM2' or 'OCP'. ") from e
+                ibmc.log_error("The high priority port type is incorrect, it should be 'Dedicated', 'Aggregation', "
+                               "'LOM', 'ExternalPCIe', 'LOM2' or 'OCP'. ")
+                raise e
             if hpp_ret_dict:
                 hpp_ret_list.append(hpp_ret_dict)
     if hpp_ret_list:

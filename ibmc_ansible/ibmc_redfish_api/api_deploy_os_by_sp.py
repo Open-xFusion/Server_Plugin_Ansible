@@ -20,9 +20,17 @@ from ibmc_ansible.ibmc_redfish_api.api_inband_fw_update import CHECK_INTERVAL
 from ibmc_ansible.ibmc_redfish_api.api_power_manager import manage_power
 
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 
 BMC_EXPECT_VERSION = "3.20"
 SP_EXPECT_VERSION = "1.09"
+SP_STATUS = "sp_status"
+OS_PROGRESS = "os_progress"
+OS_STATUS = "os_status"
+OS_STEP = "os_step"
+OS_ERROR_INFO = "os_error_info"
+OS_INSTALL = "OSInstall"
+RESULTS = "Results"
 
 
 def config_os(ibmc, os_config):
@@ -41,7 +49,7 @@ def config_os(ibmc, os_config):
      Author:
      Date: 10/26/2019
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     content = os_config
     # send restful request
     token = ibmc.get_token()
@@ -88,11 +96,10 @@ def set_sp_finished(ibmc):
     uri = "%s/SPService" % ibmc.manager_uri
     etag = ibmc.get_etag(uri)
     token = ibmc.get_token()
-    headers = {'content-type': 'application/json',
-               'X-Auth-Token': token, 'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
     payload = {"SPFinished": True}
 
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     try:
         r = ibmc.request('PATCH', resource=uri,
                          headers=headers, data=payload, tmout=10)
@@ -147,7 +154,7 @@ def vmm_is_connected(ibmc):
     return result
 
 
-def un_mount_file(ibmc):
+def unmount_file(ibmc):
     """
      Function:
          unmount file from virtual cd
@@ -185,11 +192,12 @@ def un_mount_file(ibmc):
             ibmc.log_info(
                 'unmount Failure:unknown error ,error code is :%s' % result)
     except Exception as e:
-        raise Exception("un mount file exception is :%s" % str(e))
+        ibmc.log_error("unmount file exception is :%s" % str(e))
+        raise e
     return result
 
 
-def checkMountTask(ibmc, taskid):
+def check_mount_task(ibmc, taskid):
     """
      Function:
           check mounting task if is finished
@@ -206,12 +214,12 @@ def checkMountTask(ibmc, taskid):
      Date: 10/12/2020
     """
     # 等待20 秒mount超时
-    TASK_TIME_OUT = 20
+    task_timeout = 20
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     uri = "https://%s%s" % (ibmc.ip, taskid)
     payload = {}
-    for i in range(TASK_TIME_OUT):
+    for _ in range(task_timeout):
         try:
             r = ibmc.request('GET', resource=uri,
                              headers=headers, data=payload, tmout=30)
@@ -258,7 +266,7 @@ def mount_file(ibmc, os_img):
         result = r.status_code
         if result == 202:
             _task_uri = r.json().get("@odata.id")
-            ret = checkMountTask(ibmc, _task_uri)
+            ret = check_mount_task(ibmc, _task_uri)
         elif result == 404:
             ibmc.log_info("mount Failure:resource was not found")
         elif result == 400:
@@ -292,8 +300,10 @@ def check_deploy_os_result(ibmc):
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {}
-    rets = {'sp_status': 'Init', 'os_progress': '',
-            'os_status': '', 'os_step': '', 'os_error_info': ''}
+    rets = {
+        SP_STATUS: 'Init', OS_PROGRESS: '',
+        OS_STATUS: '', OS_STEP: '', OS_ERROR_INFO: ''
+    }
     try:
         r = ibmc.request('GET', resource=uri, headers=headers,
                          data=payload, tmout=100)
@@ -301,20 +311,21 @@ def check_deploy_os_result(ibmc):
         if code == 200:
             r = r.json()
             sp_status = r[u'Status']
-            rets['sp_status'] = sp_status
+            rets[SP_STATUS] = sp_status
             ibmc.log_info("SP Status is %s" % sp_status)
             if sp_status == "Deploying" or sp_status == "Running" or sp_status == "Finished":
-                rets['os_progress'] = r[u'OSInstall'][u'Progress']
-                rets['os_status'] = r[u'OSInstall'][u'Results'][0][u'Status']
-                rets['os_step'] = r[u'OSInstall'][u'Results'][0][u'Step']
-                rets['os_error_info'] = r[u'OSInstall'][u'Results'][0][u'ErrorInfo']
+                rets[OS_PROGRESS] = r[OS_INSTALL][u'Progress']
+                rets[OS_STATUS] = r[OS_INSTALL][RESULTS][0][u'Status']
+                rets[OS_STEP] = r[OS_INSTALL][RESULTS][0][u'Step']
+                rets[OS_ERROR_INFO] = r[OS_INSTALL][RESULTS][0][u'ErrorInfo']
         else:
             ibmc.log_error("get the sp result failed! error code is %s" % code)
     except Exception as e:
-        ibmc.log_error(
-            "exception is thrown, get the sp result failed!%s" % str(e))
-        rets = {'sp_status': 'Init', 'os_progress': '',
-                'os_status': '', 'os_step': '', 'os_error_info': ''}
+        ibmc.log_error("exception is thrown, get the sp result failed!%s" % str(e))
+        rets = {
+            SP_STATUS: 'Init', OS_PROGRESS: '',
+            OS_STATUS: '', OS_STEP: '', OS_ERROR_INFO: ''
+        }
 
     return rets
 
@@ -358,12 +369,12 @@ def deploy_os_by_sp_process(ibmc, os_img, os_config):
     # if is connected,disconnect first
     if rets is True:
         ibmc.log_info("vmm is connected before,unmount ! ")
-        un_mount_file(ibmc)
+        unmount_file(ibmc)
         time.sleep(CHECK_INTERVAL)
 
     # Power off the X86 system to make sure the SP is not running
     rets = manage_power(ibmc, "PowerOff")
-    if rets['result'] is True:
+    if rets.get(RESULT) is True:
         ibmc.log_info("Power off x86 System successfully!")
     else:
         log_msg = "Power off x86 System failed!"
@@ -374,28 +385,28 @@ def deploy_os_by_sp_process(ibmc, os_img, os_config):
 
     # Set SP Finished, in order to avoid the impact of last result
     rets = set_sp_finished(ibmc)
-    if rets['result'] is False:
+    if rets.get(RESULT) is False:
         log_msg = "set sp result finished failed!please try it again! "
         set_result(ibmc.log_error, log_msg, False, rets)
         return rets
 
     # parse ini file and get image config file
     rets = config_os(ibmc, os_config)
-    if rets['result'] is False:
+    if rets.get(RESULT) is False:
         manage_power(ibmc, "PowerOff")
         time.sleep(15)
         rets = config_os(ibmc, os_config)
-        if rets['result'] is False:
+        if rets.get(RESULT) is False:
             return rets
 
     # Set SP enabled
     rets = sp_api_set_sp_service(ibmc, sp_enable=True)
-    if rets['result'] is True:
+    if rets.get(RESULT) is True:
         ibmc.log_info("set sp_service  successfully!")
     else:
         time.sleep(CHECK_INTERVAL)
         rets = sp_api_set_sp_service(ibmc, sp_enable=True)
-        if rets['result'] is True:
+        if rets.get(RESULT) is True:
             ibmc.log_info("set sp service again successfully!")
         else:
             log_msg = "set sp service again failed!"
@@ -405,17 +416,17 @@ def deploy_os_by_sp_process(ibmc, os_img, os_config):
     # mount OS iso image
     r = mount_file(ibmc, os_img)
     if r is False:
-        un_mount_file(ibmc)
+        unmount_file(ibmc)
         log_msg = "install OS failed! please check the OS image is exist or not!"
         set_result(ibmc.log_error, log_msg, False, rets)
         return rets
 
     # Start the X86 system to make the os config task avaliable and install the OS.
     rets = manage_power(ibmc, "PowerOn")
-    if rets['result'] is True:
+    if rets.get(RESULT) is True:
         ibmc.log_info("power on the X86 system successfully!")
     else:
-        un_mount_file(ibmc)
+        unmount_file(ibmc)
         log_msg = "install os failed! power on x86 System failed!"
         set_result(ibmc.log_error, log_msg, False, rets)
         return rets
@@ -425,25 +436,25 @@ def deploy_os_by_sp_process(ibmc, os_img, os_config):
         if SP_STATUS_WORKING == ret:
             break
         if cnt >= WAIT_SP_START_TIME - 1:
-            un_mount_file(ibmc)
+            unmount_file(ibmc)
             log_msg = "deploy failed , wait sp start timeout"
             set_result(ibmc.log_error, log_msg, False, rets)
             return rets
         time.sleep(CHECK_INTERVAL)
     # check the OS install result-
     try:
-        loopInstall = 0
+        loop_install = 0
         while 1:
-            loopInstall += 1
+            loop_install += 1
             status = check_deploy_os_result(ibmc)
-            sp_status = status[u'sp_status']
-            os_status = status[u'os_status']
-            os_progress = status[u'os_progress']
-            os_step = status[u'os_step']
-            os_error_info = status[u'os_error_info']
+            sp_status = status.get(u'sp_status')
+            os_status = status.get(u'os_status')
+            os_progress = status.get(u'os_progress')
+            os_step = status.get(u'os_step')
+            os_error_info = status.get(u'os_error_info')
             ibmc.log_info(
                 "loopInstall: %s sp_status:%s, os_progress:%s, os_status:%s, os_step:%s, os_error_info:%s \n" % (
-                    loopInstall, sp_status, os_progress, os_status, os_step, os_error_info))
+                    loop_install, sp_status, os_progress, os_status, os_step, os_error_info))
             if sp_status == "Init":
                 ibmc.log_info("SP is initial, please wait!")
                 time.sleep(60)
@@ -457,7 +468,7 @@ def deploy_os_by_sp_process(ibmc, os_img, os_config):
                 return rets
             else:
                 time.sleep(60)
-            if loopInstall >= 60:
+            if loop_install >= 60:
                 log_msg = "too many times loop, install OS has time out,please try it again!"
                 set_result(ibmc.log_error, log_msg, False, rets)
                 return rets
@@ -466,4 +477,4 @@ def deploy_os_by_sp_process(ibmc, os_img, os_config):
         set_result(ibmc.log_error, log_msg, False, rets)
         return rets
     finally:
-        un_mount_file(ibmc)
+        unmount_file(ibmc)

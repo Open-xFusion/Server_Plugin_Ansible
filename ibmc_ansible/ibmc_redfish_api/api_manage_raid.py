@@ -18,6 +18,7 @@ import requests
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG, ODATA_ID
 
 STRIPE_SIZE = [65536, 131072, 262144, 524288, 1048576]
 
@@ -79,6 +80,10 @@ START_TIME = 5
 # Waiting time for next loop
 SLEEP_TIME = 2
 
+MESSAGES = "Messages"
+VOLUMES_INFO = "VolumesInfo"
+OEM = "Oem"
+
 
 def get_raid(ibmc):
     """
@@ -96,7 +101,7 @@ def get_raid(ibmc):
     """
     ibmc.log_info("Start get RAID configuration resource info...")
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     report_msg = ''
     # Before get RAID configuration, make sure x86 is power on state
     check_power_state(ibmc)
@@ -134,9 +139,9 @@ def get_raid(ibmc):
                      "For more detail information please refer to %s \n" % (report_msg, file_name))
 
     # Update ret
-    ret['result'] = True
-    ret['msg'] = "Get RAID configuration resource info successful! For more detail information please refer to %s" \
-                 % file_name
+    ret[RESULT] = True
+    ret[MSG] = "Get RAID configuration resource info successful! For more detail information please refer to %s" \
+               % file_name
     return ret
 
 
@@ -157,29 +162,29 @@ def splice_result(ibmc, report_msg, value):
     oem_info = ibmc.oem_info
     root_url = "https://%s" % ibmc.ip
     # Initialize value
-    value["VolumesInfo"] = {}
+    value[VOLUMES_INFO] = {}
     value["DrivesInfo"] = {}
     # URL of the volumes
-    volumes_url = value["Volumes"]["@odata.id"]
+    volumes_url = value.get("Volumes", {}).get(ODATA_ID)
     url = root_url + volumes_url
     volume_dict = send_request(ibmc, url=url, message="volumes")
-    value["VolumesInfo"][volumes_url] = volume_dict
+    value[VOLUMES_INFO][volumes_url] = volume_dict
     for each_volume_dict in volume_dict.get("Members"):
         # URL of the volume
-        volume_url = each_volume_dict.get("@odata.id")
+        volume_url = each_volume_dict.get(ODATA_ID)
         url = root_url + volume_url
         volume_info = send_request(ibmc, url=url, message="volume")
         # Save the msg
         report_msg += "-" + str(volume_url).split("/")[-1] + ":\n"
         report_msg += "--RAIDLevel: %s \n" \
-                      % str(volume_info["Oem"][oem_info]["VolumeRaidLevel"])
+                      % str(volume_info[OEM][oem_info]["VolumeRaidLevel"])
         report_msg += "--Drives:\n"
         # Get online status drive
         for each_drive in volume_info["Links"]["Drives"]:
             if each_drive == {} or each_drive is None:
                 continue
-            report_msg += "---" + str(each_drive["@odata.id"]).split("/")[-1] + "\n"
-        value["VolumesInfo"][volumes_url][volume_url] = volume_info
+            report_msg += "---" + str(each_drive[ODATA_ID]).split("/")[-1] + "\n"
+        value[VOLUMES_INFO][volumes_url][volume_url] = volume_info
     # Get drives info
     drive_list = value.get("Drives")
     # Save the msg
@@ -191,10 +196,10 @@ def splice_result(ibmc, report_msg, value):
         url = root_url + drive_url
         drive_info = send_request(ibmc, url=url, message="drive")
         value["DrivesInfo"][drive_url] = drive_info
-        if drive_info["Oem"][oem_info]["FirmwareStatus"] == "UnconfiguredGood":
+        if drive_info[OEM][oem_info]["FirmwareStatus"] == "UnconfiguredGood":
             flag = True
             drive_name = drive_info.get("Id")
-            drive_id = drive_info["Oem"][oem_info]["DriveID"]
+            drive_id = drive_info[OEM][oem_info]["DriveID"]
             report_msg += "-- Drive Name: %s , Drive ID: %s \n" \
                           % (str(drive_name), str(drive_id))
     if flag is False:
@@ -214,7 +219,7 @@ def get_storage(ibmc):
          None
     Date: 2021/5/29
     """
-    url = ibmc.system_uri + "/Storages"
+    url = "%s/Storages" % ibmc.system_uri
     message = "RAID storage resource"
     request_result_json = send_request(ibmc, url=url, message=message)
     all_storage_info = {}
@@ -225,10 +230,9 @@ def get_storage(ibmc):
             tmp_dict = {members["@odata.id"]: {}}
             all_storage_info.update(tmp_dict)
     except Exception as e:
-        log_error = "Get storage resource collection info failed! " \
-                    "The error info is: %s \n" % str(e)
-        ibmc.log_error(log_error)
-        raise Exception("The error info is: %s \n" % str(e))
+        ibmc.log_error("Get storage resource collection info failed! " \
+                       "The error info is: %s \n" % str(e))
+        raise e
     return all_storage_info
 
 
@@ -257,9 +261,8 @@ def send_request(ibmc, url=None, message=None, payload=None):
         request_result = ibmc.request('GET', resource=url, headers=header,
                                       data=payload, tmout=30)
     except Exception as e:
-        msg = "Get %s info failed! The error info is: %s \n" % (message, str(e))
-        ibmc.log_error(msg)
-        raise Exception(msg)
+        ibmc.log_error("Get %s info failed! The error info is: %s \n" % (message, str(e)))
+        raise e
 
     request_code = request_result.status_code
     if request_code != 200:
@@ -291,7 +294,7 @@ def create_raid(ibmc, raid_info):
     ibmc.log_info("Start create RAID configuration...")
 
     ret = volume_verify(ibmc, raid_info)
-    if not ret.get('result'):
+    if not ret.get(RESULT):
         return ret
     # Before create RAID configuration, make sure x86 is power on state
     check_power_state(ibmc)
@@ -303,7 +306,7 @@ def create_raid(ibmc, raid_info):
     # Verify User-set RAID controller ID
     for volume in volumes:
         ret = verify_storage_id(ibmc, volume, all_raid_storage_id)
-        if not ret.get('result'):
+        if not ret.get(RESULT):
             return ret
 
     # Init result
@@ -313,11 +316,11 @@ def create_raid(ibmc, raid_info):
     for volume in volumes:
         storage_id = volume.get("storage_id")
         payload = get_create_payload(ibmc, volume)
-        if payload.get('result') is False:
+        if payload.get(RESULT) is False:
             return payload
 
         result = get_create_raid_request(ibmc, payload, storage_id)
-        if result.get('result') is False:
+        if result.get(RESULT) is False:
             flag = False
         result_list.append(result)
 
@@ -349,7 +352,7 @@ def volume_verify(ibmc, raid_info):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Obtain user-configured RAID information
     volumes = raid_info.get("volumes")
@@ -382,7 +385,7 @@ def get_create_payload(ibmc, volume):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Initialize payload
     payload = {}
 
@@ -414,11 +417,11 @@ def get_create_payload(ibmc, volume):
         payload["OptimumIOSizeBytes"] = stripe_size
 
     oem = create_oem(ibmc, volume)
-    if oem.get('result') is False:
+    if oem.get(RESULT) is False:
         return oem
 
     oem_info = ibmc.oem_info
-    payload["Oem"] = {oem_info: oem.get('msg')}
+    payload[OEM] = {oem_info: oem.get(MSG)}
     return payload
 
 
@@ -437,12 +440,12 @@ def cache_flag(ibmc, volume):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     cachecade_flag = volume.get("cachecade_flag")
     if cachecade_flag is not None:
         # Verify cachecade flag
         if isinstance(cachecade_flag, bool):
-            ret["msg"] = cachecade_flag
+            ret[MSG] = cachecade_flag
             return ret
         else:
             log_msg = "The cachecade flag is incorrect, it can be set to True or False"
@@ -466,7 +469,7 @@ def get_drive_list(ibmc, volume):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     drives = volume.get("drives")
     if not drives:
         log_msg = "The drives is a mandatory parameter and cannot be empty"
@@ -482,7 +485,7 @@ def get_drive_list(ibmc, volume):
         log_msg = "The drives is incorrect! The error info is: %s" % str(e)
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
-    ret["msg"] = drive_list
+    ret[MSG] = drive_list
     return ret
 
 
@@ -501,35 +504,35 @@ def create_oem(ibmc, volume):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Initialize a dict
     oem = {}
     cachecade_flag = cache_flag(ibmc, volume)
-    if cachecade_flag.get('result') is False:
+    if cachecade_flag.get(RESULT) is False:
         return cachecade_flag
-    elif cachecade_flag.get('result') and cachecade_flag.get('msg') != '':
-        oem["CreateCacheCadeFlag"] = cachecade_flag.get('msg')
+    elif cachecade_flag.get(RESULT) and cachecade_flag.get(MSG) != '':
+        oem["CreateCacheCadeFlag"] = cachecade_flag.get(MSG)
 
     drives = get_drive_list(ibmc, volume)
-    if drives.get('result') is False:
+    if drives.get(RESULT) is False:
         return drives
-    oem["Drives"] = drives.get('msg')
+    oem["Drives"] = drives.get(MSG)
 
     volume_raid_level = get_volume_raid_level(ibmc, volume)
-    if volume_raid_level.get('result') is False:
+    if volume_raid_level.get(RESULT) is False:
         return volume_raid_level
-    oem["VolumeRaidLevel"] = volume_raid_level.get('msg')
+    oem["VolumeRaidLevel"] = volume_raid_level.get(MSG)
 
     volume_name = get_volume_name(ibmc, volume)
-    if volume_name.get('result') is False:
+    if volume_name.get(RESULT) is False:
         return volume_name
-    elif volume_name.get('result') is True and volume_name.get('msg') != '':
-        oem["VolumeName"] = volume_name.get('msg')
+    elif volume_name.get(RESULT) is True and volume_name.get(MSG) != '':
+        oem["VolumeName"] = volume_name.get(MSG)
 
     span_num = volume.get("span_num")
     if span_num is not None:
         ret = verify_volume_raid_level(ibmc, span_num, volume_raid_level)
-        if not ret.get('result'):
+        if not ret.get(RESULT):
             return ret
         oem["SpanNumber"] = span_num
 
@@ -543,11 +546,11 @@ def create_oem(ibmc, volume):
         oem["InitializationMode"] = init_mode
 
     common = common_oem(ibmc, volume)
-    if common.get('result') is False:
+    if common.get(RESULT) is False:
         return common
 
-    oem.update(common.get('msg'))
-    ret['msg'] = oem
+    oem.update(common.get(MSG))
+    ret[MSG] = oem
     return ret
 
 
@@ -566,7 +569,7 @@ def get_volume_raid_level(ibmc, volume):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     volume_raid_level = volume.get("volume_raid_level")
     if not volume_raid_level:
         log_msg = "The raid level is a mandatory parameter and cannot be empty"
@@ -578,7 +581,7 @@ def get_volume_raid_level(ibmc, volume):
         log_msg = 'The raid level is incorrect, It should be in %s.' % RAID_LEVEL
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
-    ret['msg'] = volume_raid_level
+    ret[MSG] = volume_raid_level
     return ret
 
 
@@ -598,7 +601,7 @@ def verify_volume_raid_level(ibmc, span_num, volume_raid_level):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Verify span num is an integer
     if not isinstance(span_num, int):
         log_msg = "The span num must be an integer"
@@ -636,7 +639,7 @@ def verify_storage_id(ibmc, volume, all_raid_storage_id):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     storage_id = volume.get("storage_id")
     if not storage_id:
         log_msg = "The RAID storage id cannot be empty"
@@ -702,7 +705,7 @@ def get_create_raid_request(ibmc, payload, storage_id):
     Date: 2019/11/13 22:15
     """
     # Init ret
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     try:
         # Send create RAID request
@@ -772,25 +775,25 @@ def delete_raid(ibmc, raid_info):
     ibmc.log_info("Start delete RAID configuration...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Before delete RAID configuration, make sure x86 is power on state
     check_power_state(ibmc)
 
     get_storage_id = get_storage_id_list(ibmc, raid_info)
-    if get_storage_id.get('result') is False:
+    if get_storage_id.get(RESULT) is False:
         return get_storage_id
     else:
-        storage_id_list = get_storage_id.get('msg')
+        storage_id_list = get_storage_id.get(MSG)
     # Save Volume id
     volume_id_dict = {}
     # Obtain User-set volume id
     volume_id = raid_info.get("volume_id")
     for storage_id in storage_id_list:
         update_volume = update_volume_id(ibmc, volume_id, storage_id)
-        if update_volume.get('result') is False:
+        if update_volume.get(RESULT) is False:
             return update_volume
-        volume_id_dict.update(update_volume.get('msg'))
+        volume_id_dict.update(update_volume.get(MSG))
 
     result_list = []
     flag = True
@@ -798,7 +801,7 @@ def delete_raid(ibmc, raid_info):
         volume_list = volume_id_dict.get(storage_id)
         for volume_id in volume_list:
             result = delete_raid_request(ibmc, storage_id, volume_id)
-            if result["result"] is False:
+            if result.get(RESULT) is False:
                 flag = False
             result_list.append(result)
 
@@ -830,7 +833,7 @@ def get_storage_id_list(ibmc, raid_info):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Save RAID storage id
     storage_id_list = []
     # Save not exist RAID storage id
@@ -841,7 +844,7 @@ def get_storage_id_list(ibmc, raid_info):
     storage_id = raid_info.get("storage_id")
     if storage_id == "all":
         storage_id_list = all_raid_storage_id
-        ret['msg'] = storage_id_list
+        ret[MSG] = storage_id_list
         return ret
     elif storage_id == "":
         log_msg = "The RAID storage id is empty, please modify it in the delete_raid.yml file"
@@ -870,7 +873,7 @@ def get_storage_id_list(ibmc, raid_info):
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
     else:
-        ret['msg'] = storage_id_list
+        ret[MSG] = storage_id_list
         return ret
 
 
@@ -890,7 +893,7 @@ def update_volume_id(ibmc, volume_id, storage_id):
         None
     Date: 2019/11/12 22:07
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Obtain all volume id under RAID controller
     all_volume_id = get_all_volume_id(ibmc, storage_id)
     volume_id_list = []
@@ -926,7 +929,7 @@ def update_volume_id(ibmc, volume_id, storage_id):
             volume_id)
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
-    ret['msg'] = volume_id_dict
+    ret[MSG] = volume_id_dict
     return ret
 
 
@@ -947,7 +950,7 @@ def delete_raid_request(ibmc, storage_id, volume_id):
     Date: 2019/11/12 22:07
     """
     # init result
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # URL of the volume
     url = "%s/Storages/%s/Volumes/%s" % (ibmc.system_uri, storage_id, volume_id)
     # Obtain token
@@ -1001,7 +1004,7 @@ def wait_task_start(ibmc, storage_volume_id, task_url):
         None
     Date: 2019/11/9 18:04
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Wait for task start
     time.sleep(START_TIME)
     loop_time = 0
@@ -1048,7 +1051,7 @@ def modify_raid(ibmc, raid_info):
     ibmc.log_info("Start modify RAID configuration...")
 
     ret = volume_verify(ibmc, raid_info)
-    if not ret.get('result'):
+    if not ret.get(RESULT):
         return ret
 
     # Get all RAID storage ID
@@ -1059,7 +1062,7 @@ def modify_raid(ibmc, raid_info):
     for volume in volumes:
         # Obtain User-set RAID controller ID
         ret = verify_storage_id(ibmc, volume, all_raid_storage_id)
-        if not ret.get('result'):
+        if not ret.get(RESULT):
             return ret
         storage_id = volume.get("storage_id")
         # Save all volume
@@ -1089,13 +1092,13 @@ def modify_raid(ibmc, raid_info):
         storage_id = volume.get("storage_id")
         volume_id = volume.get("volume_id")
         oem = get_modify_oem(ibmc, volume)
-        if not oem.get('result'):
+        if not oem.get(RESULT):
             return oem
 
-        payload["Oem"] = {oem_info: oem.get('msg')}
+        payload[OEM] = {oem_info: oem.get(MSG)}
         # Get modify raid result
         result = modify_raid_request(ibmc, payload, storage_id, volume_id)
-        if result["result"] is True:
+        if result.get(RESULT) is True:
             # Wait for effect
             time.sleep(EFFECT_TIME)
         else:
@@ -1130,7 +1133,7 @@ def common_oem(ibmc, volume):
         None
     Date: 2019/11/9 18:04
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     oem = {}
     df_read_policy = volume.get("df_read_policy")
     if df_read_policy:
@@ -1178,7 +1181,7 @@ def common_oem(ibmc, volume):
             return ret
 
         oem["DriveCachePolicy"] = disk_cache_policy
-    ret['msg'] = oem
+    ret[MSG] = oem
     return ret
 
 
@@ -1197,7 +1200,7 @@ def get_volume_name(ibmc, volume):
         None
     Date: 2019/11/9 18:04
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     volume_name = volume.get("volume_name")
     if volume_name is not None:
         try:
@@ -1210,8 +1213,8 @@ def get_volume_name(ibmc, volume):
             ibmc.log_error('The volume name is illegal! '
                            'The error info is: %s \n' % str(e))
             raise ValueError(
-                'The volume name is illegal! The error info is: %s' % str(e))
-        ret['msg'] = volume_name
+                'The volume name is illegal! The error info is: %s' % str(e)) from e
+        ret[MSG] = volume_name
     return ret
 
 
@@ -1230,13 +1233,13 @@ def get_modify_oem(ibmc, volume):
         None
     Date: 2019/11/9 18:04
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     oem = {}
     volume_name = get_volume_name(ibmc, volume)
-    if volume_name.get('result') is False:
+    if volume_name.get(RESULT) is False:
         return volume_name
-    elif volume_name.get('result') and volume_name.get('msg') != '':
-        oem["VolumeName"] = volume_name.get('msg')
+    elif volume_name.get(RESULT) and volume_name.get(MSG) != '':
+        oem["VolumeName"] = volume_name.get(MSG)
 
     boot_enable = volume.get("boot_enable")
     if boot_enable is not None:
@@ -1266,12 +1269,12 @@ def get_modify_oem(ibmc, volume):
             return ret
 
     common = common_oem(ibmc, volume)
-    if common.get('result') is False:
+    if common.get(RESULT) is False:
         return common
     else:
-        oem.update(common.get('msg'))
+        oem.update(common.get(MSG))
 
-    ret['msg'] = oem
+    ret[MSG] = oem
     return ret
 
 
@@ -1293,7 +1296,7 @@ def modify_raid_request(ibmc, payload, storage_id, volume_id):
     Date: 2019/11/9 18:55
     """
     # init result
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # URL of the volume
     url = "%s/Storages/%s/Volumes/%s" % (ibmc.system_uri, storage_id, volume_id)
 
@@ -1302,8 +1305,7 @@ def modify_raid_request(ibmc, payload, storage_id, volume_id):
     # Obtain etag
     etag = ibmc.get_etag(url)
     # Initialize headers
-    headers = {'content-type': 'application/json', 'X-Auth-Token': token,
-               'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
 
     storage_volume_id = storage_id + "/" + volume_id
     try:
@@ -1343,7 +1345,7 @@ def get_all_storage_id(ibmc):
     # Obtain the token information of the iBMC
     token = ibmc.bmc_token
     # URL of the NTP service
-    url = ibmc.system_uri + "/Storages"
+    url = "%s/Storages" % ibmc.system_uri
     # Initialize headers
     headers = {'X-Auth-Token': token}
     # Initialize payload
@@ -1372,9 +1374,8 @@ def get_all_storage_id(ibmc):
             raid_storage_url = members.get("@odata.id")
             all_raid_storage_id.append(str(raid_storage_url).split("/")[-1])
     except Exception as e:
-        msg = "Get RAID storage id failed! The error info is: %s \n" % str(e)
-        ibmc.log_error(msg)
-        raise Exception(msg)
+        ibmc.log_error("Get RAID storage id failed! The error info is: %s \n" % str(e))
+        raise e
     return all_raid_storage_id
 
 
@@ -1416,9 +1417,8 @@ def get_all_volume_id(ibmc, storage_id):
             ibmc.log_error(msg)
             raise requests.exceptions.RequestException(msg)
     except Exception as e:
-        msg = "Get all volume info failed! The error info is: %s" % str(e)
-        ibmc.log_error(msg)
-        raise Exception(msg)
+        ibmc.log_error("Get all volume info failed! The error info is: %s" % str(e))
+        raise e
 
     # Save all volume
     all_volume_id = []
@@ -1428,9 +1428,8 @@ def get_all_volume_id(ibmc, storage_id):
             volume_url = members.get("@odata.id")
             all_volume_id.append(str(volume_url).split("/")[-1])
     except Exception as e:
-        msg = "Get all volume id failed! The error info is: %s \n" % str(e)
-        ibmc.log_error(msg)
-        raise Exception(msg)
+        ibmc.log_error("Get all volume id failed! The error info is: %s \n" % str(e))
+        raise e
     return all_volume_id
 
 
@@ -1486,12 +1485,12 @@ def get_task_status(ibmc, task_url):
         if task_status == "Running":
             result.append("Running")
         elif task_status == "Completed" and \
-                re.search("successfully", request_result_json['Messages']['Message'], re.I):
+                re.search("successfully", request_result_json[MESSAGES]['Message'], re.I):
             result.append("Successful")
-            result.append(request_result_json['Messages']['MessageArgs'][0])
+            result.append(request_result_json[MESSAGES]['MessageArgs'][0])
         else:
             result.append(task_status)
-            result.append(request_result_json['Messages']['Message'])
+            result.append(request_result_json[MESSAGES]['Message'])
 
     except Exception as e:
         result.append("Exception")
@@ -1518,10 +1517,8 @@ def check_power_state(ibmc):
     try:
         power_state = systems_source.get("PowerState")
     except Exception as e:
-        msg = "Get system power state failed! The error info is: %s \n" % str(
-            e)
-        ibmc.log_error(msg)
-        raise Exception(msg)
+        ibmc.log_error("Get system power state failed! The error info is: %s \n" % str(e))
+        raise e
 
     if power_state != "On":
         msg = "The server has been powered off, Retry after powering on the server"

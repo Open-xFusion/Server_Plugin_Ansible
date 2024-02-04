@@ -16,12 +16,22 @@ import json
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import write_result_csv
 from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import RESULT, MSG, ODATA_ID
 
-VER_HEADER = ["ProductName", "Model", "Status", "SerialNumber", "AssetTag",
-              "iBMCVersion", "BiosVersion", "CPLDVersion",
-              "SPVersion"]
-SUMMARY_HEADER = ["CPUCount", "CPUStatus", "MemoryGiB", "MemoryStatus",
-                  "DriveCount", "DriveStatus"]
+VER_HEADER = [
+    "ProductName", "Model", "Status", "SerialNumber", "AssetTag",
+    "iBMCVersion", "BiosVersion", "CPLDVersion", "SPVersion"
+]
+SUMMARY_HEADER = [
+    "CPUCount", "CPUStatus", "MemoryGiB",
+    "MemoryStatus", "DriveCount", "DriveStatus"
+]
+MEMBERS = "Members"
+FAN_SUMMARY = "FanSummary"
+OEM = "Oem"
+DRIVE_SUMMARY = "DriveSummary"
+STATUS = "Status"
+HEALTH_ROLLUP = "HealthRollup"
 
 
 def get_drives_info(ibmc, chassis_json):
@@ -56,7 +66,7 @@ def get_drives_info(ibmc, chassis_json):
         else:
             # get driver info one by one
             for each_members in drivers:
-                uri = "https://%s%s" % (ibmc.ip, each_members['@odata.id'])
+                uri = "https://%s%s" % (ibmc.ip, each_members[ODATA_ID])
                 r = ibmc.request('GET', resource=uri, headers=headers, data=payload, tmout=30)
                 result = r.status_code
                 if result == 200:
@@ -66,8 +76,8 @@ def get_drives_info(ibmc, chassis_json):
                         del each_json['@odata.context']
                     if 'Actions' in each_json.keys():
                         del each_json['Actions']
-                    if '@odata.id' in each_json.keys():
-                        del each_json['@odata.id']
+                    if ODATA_ID in each_json.keys():
+                        del each_json[ODATA_ID]
                     list_json.append(each_json)
                 else:
                     ibmc.log_error("Get %s failed! the error code is:%d" % (uri, result))
@@ -102,28 +112,28 @@ def get_mem_info(ibmc, systems_json):
     list_json = []
 
     try:
-        memory_uri = systems_json['Memory']['@odata.id']
+        memory_uri = systems_json['Memory'][ODATA_ID]
         uri = "https://%s%s" % (ibmc.ip, memory_uri)
         r = ibmc.request('GET', resource=uri, headers=headers, data=payload, tmout=30)
         result = r.status_code
         if result == 200:
             member_json = r.json()
-            if "Members" not in list(member_json.keys()):
+            if MEMBERS not in list(member_json.keys()):
                 return memory_info
-            if len(member_json["Members"]) < 0:
+            if len(member_json[MEMBERS]) < 0:
                 return memory_info
 
             # get memory info one by one
-            ibmc.log_info("Get memory info, memory total: %s" % len(member_json[u"Members"]))
-            for each_members in member_json[u"Members"]:
-                uri = "https://%s%s" % (ibmc.ip, each_members["@odata.id"])
+            ibmc.log_info("Get memory info, memory total: %s" % len(member_json[MEMBERS]))
+            for each_members in member_json[MEMBERS]:
+                uri = "https://%s%s" % (ibmc.ip, each_members[ODATA_ID])
                 r = ibmc.request('GET', resource=uri, headers=headers, data=payload, tmout=30)
                 result = r.status_code
                 if result == 200:
                     each_json = r.json()
                     # delete no means info
-                    if '@odata.id' in each_json.keys():
-                        del each_json['@odata.id']
+                    if ODATA_ID in each_json.keys():
+                        del each_json[ODATA_ID]
                     if '@odata.context' in each_json.keys():
                         del each_json['@odata.context']
                     list_json.append(each_json)
@@ -162,23 +172,23 @@ def get_cpu_info(ibmc, systems_json):
     list_json = []
 
     try:
-        processors_uri = systems_json['Processors']['@odata.id']
+        processors_uri = systems_json['Processors'][ODATA_ID]
         uri = "https://%s%s" % (ibmc.ip, processors_uri)
         r = ibmc.request('GET', resource=uri, headers=headers, data=payload, tmout=30)
         result = r.status_code
         if result == 200:
             member_json = r.json()
-            if "Members" not in list(member_json.keys()):
+            if MEMBERS not in list(member_json.keys()):
                 ibmc.log_error("there are haven't members in member json!")
                 return cpu_info
-            if len(member_json["Members"]) < 0:
+            if len(member_json[MEMBERS]) < 0:
                 ibmc.log_error("there are haven't any processor!")
                 return cpu_info
 
             # get processor info one by one
-            ibmc.log_info("Get processors info,processors total: %d" % len(member_json[u"Members"]))
-            for each_members in member_json[u"Members"]:
-                uri = "https://%s%s" % (ibmc.ip, each_members["@odata.id"])
+            ibmc.log_info("Get processors info,processors total: %d" % len(member_json[MEMBERS]))
+            for each_members in member_json[MEMBERS]:
+                uri = "https://%s%s" % (ibmc.ip, each_members[ODATA_ID])
                 r = ibmc.request('GET', resource=uri, headers=headers, data=payload, tmout=30)
                 result = r.status_code
                 if result == 200:
@@ -186,8 +196,8 @@ def get_cpu_info(ibmc, systems_json):
                     if each_json.get("ProcessorType", None) and each_json.get("ProcessorType", None) != "CPU":
                         continue
                     # delete no means info
-                    if '@odata.id' in each_json.keys():
-                        del each_json['@odata.id']
+                    if ODATA_ID in each_json.keys():
+                        del each_json[ODATA_ID]
                     if '@odata.context' in each_json.keys():
                         del each_json['@odata.context']
                     list_json.append(each_json)
@@ -308,8 +318,8 @@ def get_server_info(ibmc, systems_r, manager_r, chassis_r):
         js['CPLDVersion'] = cpld_info.get('Version')
 
         # get oem info
-        systems_oem = systems_r['Oem'][oem_info]
-        chassis_oem = chassis_r['Oem'][oem_info]
+        systems_oem = systems_r[OEM][oem_info]
+        chassis_oem = chassis_r[OEM][oem_info]
 
         # get server basic info
         js['ProductName'] = systems_oem.get('ProductName')
@@ -332,10 +342,10 @@ def get_server_info(ibmc, systems_r, manager_r, chassis_r):
         summary['PowerSupplySummary'] = chassis_oem.get('PowerSupplySummary')
         summary['DriveSummary'] = chassis_oem.get('DriveSummary')
         fan_info = get_fan_info(ibmc, chassis_r)
-        if 'FanSummary' in fan_info['Oem'][oem_info].keys():
-            summary['FanSummary'] = fan_info['Oem'][oem_info]['FanSummary']
+        if FAN_SUMMARY in fan_info[OEM][oem_info].keys():
+            summary[FAN_SUMMARY] = fan_info[OEM][oem_info][FAN_SUMMARY]
         else:
-            summary['FanSummary'] = None
+            summary[FAN_SUMMARY] = None
         js['Summary'] = summary
 
     except Exception as e:
@@ -399,7 +409,7 @@ def get_sp_info_request(ibmc):
     token = ibmc.bmc_token
 
     # URL of the sp service
-    url = ibmc.manager_uri + "/SPService"
+    url = "%s/SPService" % ibmc.manager_uri
 
     # Initialize headers
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
@@ -442,7 +452,7 @@ def get_basic_info(ibmc, csv_format=False):
     """
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     ibmc.log_info("Start get basic info...")
     try:
@@ -464,47 +474,54 @@ def get_basic_info(ibmc, csv_format=False):
 
     except Exception as e:
         ibmc.log_error("Get basic info exception! %s" % str(e))
-        ret['result'] = False
-        ret['msg'] = "Get basic info exception! %s" % str(e)
+        ret[RESULT] = False
+        ret[MSG] = "Get basic info exception! %s" % str(e)
         return ret
 
     if csv_format is True:
-        # get version info
-        result_csv = []
-        for title in VER_HEADER:
-            if title != "SPVersion":
-                result_csv.append(result.get(title))
-            else:
-                if "SPInfo" in result.keys():
-                    result_csv.append(json.dumps(result["SPInfo"].get("Version")))
-                else:
-                    result_csv.append("")
-
-        # get cpu, memory, drive info
-        cpu_cut = cpu_status = mem_gib = mem_status = drive_cut = drive_status = None
-        try:
-            summary = result["Summary"]
-            cpu_cut = summary["ProcessorSummary"]["Count"]
-            cpu_status = summary["ProcessorSummary"]["Status"]["HealthRollup"]
-            mem_gib = summary["MemorySummary"]["TotalSystemMemoryGiB"]
-            mem_status = summary["MemorySummary"]["Status"]["HealthRollup"]
-            drive_cut = summary["DriveSummary"]["Count"]
-            drive_status = summary["DriveSummary"]["Status"]["HealthRollup"]
-        except Exception as e:
-            ibmc.log_error("Failed to get server summary info, the error info is: %s" % str(e))
-        summary_seq = [cpu_cut, cpu_status, mem_gib, mem_status, drive_cut, drive_status]
-
-        result_csv.extend(summary_seq)
-        VER_HEADER.extend(SUMMARY_HEADER)
         file_name = os.path.join(IBMC_REPORT_PATH, "basic_info", "%s_BasicInfo.csv" % str(ibmc.ip))
-        # write the result to csv file
-        write_result_csv(ibmc, file_name, VER_HEADER, result_csv)
+        get_summary_and_write_csv(ibmc, result, file_name)
     else:
         file_name = os.path.join(IBMC_REPORT_PATH, "basic_info", "%s_BasicInfo.json" % str(ibmc.ip))
         # write the result to json file
         write_result(ibmc, file_name, result)
 
-    ret = {'result': True, 'msg': 'Get basic info successful! For more detail information,'
-                                  'please refer the report log: %s' % file_name}
+    ret = {
+        RESULT: True, MSG: 'Get basic info successful! For more detail information,'
+                               'please refer the report log: %s' % file_name
+    }
 
     return ret
+
+
+def get_summary_and_write_csv(ibmc, result, file_name):
+    # get version info
+    result_csv = []
+    for title in VER_HEADER:
+        if title != "SPVersion":
+            result_csv.append(result.get(title))
+        else:
+            if "SPInfo" in result.keys():
+                result_csv.append(json.dumps(result["SPInfo"].get("Version")))
+            else:
+                result_csv.append("")
+    # get cpu, memory, drive info
+    cpu_cut = cpu_status = mem_gib = mem_status = drive_cut = drive_status = None
+    try:
+        summary = result["Summary"]
+        cpu_cut = summary["ProcessorSummary"]["Count"]
+        cpu_status = summary["ProcessorSummary"][STATUS][HEALTH_ROLLUP]
+        mem_gib = summary["MemorySummary"]["TotalSystemMemoryGiB"]
+        mem_status = summary["MemorySummary"][STATUS][HEALTH_ROLLUP]
+        drive_cut = summary[DRIVE_SUMMARY]["Count"]
+        drive_status = summary[DRIVE_SUMMARY][STATUS][HEALTH_ROLLUP]
+    except KeyError as e:
+        ibmc.log_error("parse upgrade result exception key %s dose not exist" % str(e))
+    except Exception as e:
+        ibmc.log_error("Failed to get server summary info, the error info is: %s" % str(e))
+    summary_seq = [cpu_cut, cpu_status, mem_gib, mem_status, drive_cut, drive_status]
+    result_csv.extend(summary_seq)
+    VER_HEADER.extend(SUMMARY_HEADER)
+    # write the result to csv file
+
+    write_result_csv(ibmc, file_name, VER_HEADER, result_csv)

@@ -10,18 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-import copy
-
-from ansible.module_utils.basic import AnsibleModule
-
-from ibmc_ansible.ibmc_redfish_api.api_manage_ibmc_ip import set_network_info
-from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
-from ibmc_ansible.ibmc_logger import report
-from ibmc_ansible.ibmc_logger import log
-from ibmc_ansible.utils import is_support_server, set_result, validate_ipv4, validate_ipv6
-from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
-
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -459,6 +447,18 @@ RETURNS = """
     {"result": True, "msg": "Set iBMC ethernet interface info successful!"}
 """
 
+import copy
+
+from ansible.module_utils.basic import AnsibleModule
+
+from ibmc_ansible.ibmc_redfish_api.api_manage_ibmc_ip import set_network_info
+from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
+from ibmc_ansible.ibmc_logger import report
+from ibmc_ansible.ibmc_logger import log
+from ibmc_ansible.utils import is_support_server, set_result, validate_ipv4, validate_ipv6
+from ibmc_ansible.utils import ansible_ibmc_run_module
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, LIST, BOOL, INT, ELEMENTS, DICT, OPTIONS
+
 
 def ibmc_set_network_module(module):
     """
@@ -517,20 +517,21 @@ def set_ibmc_network(ibmc, network_info):
     equal_ip_index = -1
     ip_correct_flag = True
     ip_list = []
+    target_bmc_ip_str = "target_bmc_ip"
     for private_info_dict in private_info_list:
-        if private_info_dict.get("target_bmc_ip"):
-            ip_list.append(private_info_dict.get("target_bmc_ip"))
+        if private_info_dict.get(target_bmc_ip_str):
+            ip_list.append(private_info_dict.get(target_bmc_ip_str))
     if ibmc.ip not in ip_list:
         log_msg = "The ibmc_ip[%s] in hosts is not in target_bmc_ip list" % str(ibmc.ip)
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
     for private_info_dict in private_info_list:
-        if not private_info_dict.get("target_bmc_ip"):
+        if not private_info_dict.get(target_bmc_ip_str):
             log_msg = "private_info_list/%s/target_bmc_ip needs to be set the content." % str(ip_count)
             ibmc.log_error(log_msg)
             ip_correct_flag = False
 
-        target_bmc_ip = private_info_dict["target_bmc_ip"]
+        target_bmc_ip = private_info_dict[target_bmc_ip_str]
         if not validate_ipv4(target_bmc_ip) and not validate_ipv6(target_bmc_ip):
             log_msg = "private_info_list/%s/target_bmc_ip is wrong IPv4/Ipv6 format: %s" \
                       % (str(ip_count), target_bmc_ip)
@@ -572,25 +573,25 @@ def define_private_info_list():
     Function: define private_info_list format
     """
     private_info_list = {
-        "type": 'list', "elements": 'dict',
-        "options": {
-            "target_bmc_ip": {"required": True, "type": 'str'},
-            "hostname": {"type": 'str'},
-            "ipv4_addr": {"type": 'list', "elements": 'dict', "options": {
-                "address": {"type": 'str'},
-                "subnet_mask": {"type": 'str'},
-                "gateway": {"type": 'str'},
-                "address_origin": {"type": 'str'}
+        TYPE: LIST, ELEMENTS: DICT,
+        OPTIONS: {
+            "target_bmc_ip": {REQUIRED: True, TYPE: STR},
+            "hostname": {TYPE: STR},
+            "ipv4_addr": {TYPE: LIST, ELEMENTS: DICT, OPTIONS: {
+                "address": {TYPE: STR},
+                "subnet_mask": {TYPE: STR},
+                "gateway": {TYPE: STR},
+                "address_origin": {TYPE: STR}
             }},
-            "ipv6_addr": {"type": 'list', "elements": 'dict', "options": {
-                "address": {"type": 'str'},
-                "prefix_length": {"type": 'int'},
-                "address_origin": {"type": 'str'}
+            "ipv6_addr": {TYPE: LIST, ELEMENTS: DICT, OPTIONS: {
+                "address": {TYPE: STR},
+                "prefix_length": {TYPE: INT},
+                "address_origin": {TYPE: STR}
             }},
-            "ipv6_gateway": {"type": 'str'}
+            "ipv6_gateway": {TYPE: STR}
         }
     }
-    private_info_list["options"].update(define_public_arg())
+    private_info_list[OPTIONS].update(define_public_arg())
     return private_info_list
 
 
@@ -598,32 +599,33 @@ def define_public_arg():
     """
     Function: define public argument format
     """
+    port_number = "port_number"
     public_arg = {
-        "domain_name": {"type": 'str'},
-        "vlan": {"type": 'dict', "options": {
-            "vlan_enable": {"type": 'bool'},
-            "vlan_id": {"type": 'int'}
+        "domain_name": {TYPE: STR},
+        "vlan": {TYPE: DICT, OPTIONS: {
+            "vlan_enable": {TYPE: BOOL},
+            "vlan_id": {TYPE: INT}
         }},
-        "ip_version": {"type": 'str'},
-        "name_servers": {"type": 'list', "elements": 'str'},
-        "network_port_mode": {"type": 'str'},
-        "auto_mode_extend": {"type": 'dict', "options": {
-            "high_priority_mode": {"type": 'bool'},
-            "high_priority_port": {"type": 'list', "elements": 'dict', "options": {
-                "type": {"type": 'str'},
-                "port_number": {"type": 'int'}
+        "ip_version": {TYPE: STR},
+        "name_servers": {TYPE: LIST, ELEMENTS: STR},
+        "network_port_mode": {TYPE: STR},
+        "auto_mode_extend": {TYPE: DICT, OPTIONS: {
+            "high_priority_mode": {TYPE: BOOL},
+            "high_priority_port": {TYPE: LIST, ELEMENTS: DICT, OPTIONS: {
+                TYPE: {TYPE: STR},
+                port_number: {TYPE: INT}
             }}
         }},
-        "management_network_port": {"type": 'dict', "options": {
-            "type": {"type": 'str'},
-            "port_number": {"type": 'int'}
+        "management_network_port": {TYPE: DICT, OPTIONS: {
+            TYPE: {TYPE: STR},
+            port_number: {TYPE: INT}
         }},
-        "adaptive_port": {"type": 'list', "elements": 'dict', "options": {
-            "type": {"type": 'str'},
-            "port_number": {"type": 'int'},
-            "adaptive_flag": {"type": 'bool'}
+        "adaptive_port": {TYPE: LIST, ELEMENTS: DICT, OPTIONS: {
+            TYPE: {TYPE: STR},
+            port_number: {TYPE: INT},
+            "adaptive_flag": {TYPE: BOOL}
         }},
-        "dns_address_origin": {"type": 'str'}
+        "dns_address_origin": {TYPE: STR}
     }
     return public_arg
 
@@ -631,15 +633,15 @@ def define_public_arg():
 def main():
     # Use AnsibleModule to read yml files and convert it to dict
     network_info_arg = {
-        "ibmc_ip": {"required": True, "type": 'str'},
-        "ibmc_user": {"required": True, "type": 'str'},
-        "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-        "ipv4_subnet_mask": {"type": 'str'},
-        "ipv4_gateway": {"type": 'str'},
-        "ipv4_address_origin": {"type": 'str'},
-        "ipv6_prefix_length": {"type": 'int'},
-        "ipv6_gateway": {"type": 'str'},
-        "ipv6_address_origin": {"type": 'str'}
+        "ibmc_ip": {REQUIRED: True, TYPE: STR},
+        "ibmc_user": {REQUIRED: True, TYPE: STR},
+        "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+        "ipv4_subnet_mask": {TYPE: STR},
+        "ipv4_gateway": {TYPE: STR},
+        "ipv4_address_origin": {TYPE: STR},
+        "ipv6_prefix_length": {TYPE: INT},
+        "ipv6_gateway": {TYPE: STR},
+        "ipv6_address_origin": {TYPE: STR}
     }
     network_info_arg.update(define_public_arg())
     network_info_arg.update({"private_info_list": define_private_info_list()})

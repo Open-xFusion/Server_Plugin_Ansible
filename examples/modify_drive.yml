@@ -1,0 +1,28 @@
+---
+- hosts: myhosts
+  connection: local
+  name: modify drive
+  gather_facts: False
+
+# drive_id: The ID of the drive resource
+# firmware_status: Drive status,The drive status can switch between the following states:
+# After creating a logical drive, the drive status can be switched between "Online" and "Offline"
+# When the controller mode is RAID and JBOD State is true, the drive state can switch between "UnconfiguredGood" and "JBOD"
+# When the controller EpdEnable is true, the drive status can switch between "UnconfiguredGood" and "Online"
+#"UnconfiguredBad" to "UnconfiguredGood"
+
+  tasks:
+  - name: modify drive
+    ibmc_modify_drive:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
+      drives:
+      - drive_id: "HDDPlaneDisk0"
+        firmware_status: "UnconfiguredGood"
+      - drive_id: "HDDPlaneDisk1"
+        firmware_status: "JBOD"
+      - drive_id: "HDDPlaneDisk2"
+        firmware_status: "Online"
+      - drive_id: "HDDPlaneDisk3"
+        firmware_status: "Offline"

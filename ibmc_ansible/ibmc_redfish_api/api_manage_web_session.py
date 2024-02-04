@@ -16,6 +16,7 @@ import requests
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 
 
 def set_web_session_timeout(ibmc, web_session_timeout_minutes):
@@ -53,7 +54,7 @@ def set_web_session_timeout_request(ibmc, payload):
          Exception
     """
 
-    ret = {'result': False, 'msg': ''}
+    ret = {RESULT: False, MSG: ''}
 
     url = os.path.join(ibmc.root_uri, "SessionService")
     token = ibmc.get_token()
@@ -94,7 +95,7 @@ def get_web_session_timeout(ibmc):
     """
     ibmc.log_info("Start to get web session timeout...")
 
-    ret = {'result': False, 'msg': ''}
+    ret = {RESULT: False, MSG: ''}
 
     # File to save web session timeout
     result_file = os.path.join(IBMC_REPORT_PATH, "web_session_timeout",
@@ -107,8 +108,8 @@ def get_web_session_timeout(ibmc):
     }
     write_result(ibmc, result_file, result)
 
-    ret['result'] = True
-    ret['msg'] = "Get web session timeout successful! Web session timeout is: %s minutes. " \
+    ret[RESULT] = True
+    ret[MSG] = "Get web session timeout successful! Web session timeout is: %s minutes. " \
                  "For more detail information please refer to %s." % (web_session_timeout_minutes, result_file)
     ibmc.log_info("Get web session timeout successful!")
 

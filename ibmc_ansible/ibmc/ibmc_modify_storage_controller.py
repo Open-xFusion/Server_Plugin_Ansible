@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2019-2021 xFusion Digital Technologies Co., Ltd. All rights reserved.
+# Copyright (C) 2023-2023 xFusion Digital Technologies Co., Ltd. All rights reserved.
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License v3.0+
 
@@ -18,14 +18,14 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = """
 ---
-module: ibmc_delete_raid
+module: ibmc_modify_storage
 
-short_description: Delete volume
+short_description: Modify storage controller
 
 version_added: "2.5.0"
 
 description:
-    - "Delete the specified volume"
+    - "Modify properties of the specified storage controller"
 
 options:
   ibmc_ip:
@@ -43,85 +43,90 @@ options:
     default: None
     description:
       - iBMC user password used for authentication
-  storage_id:
+  storage_controllers:
     required: true
     default: None
     description:
-      - ID of the storage resource
-      - "Delete one RAID storage, Format: RAIDStorage+Controller_ID"
-      - "Delete multiple RAID storage, Format: RAIDStorage+Controller_ID1,RAIDStorage+Controller_ID2,..."
-      - "Delete all RAID storage, Format: all"
-  volume_id:
+      - Can set one or more storage controller information
+  storage_controllers/storage_id:
     required: true
     default: None
     description:
-      - Volume resource ID
-      - "Delete one volume, Format: LogicalDrive+Volume_ID"
-      - "Delete multiple volume, Format: LogicalDrive+Volume_ID1,LogicalDrive+Volume_ID2,..."
-      - "Delete all volume, Format: all"
+      - ID of the storage resource. It is a mandatory parameter. Format: RAIDStorage+Controller_ID
+  storage_controllers/mode:
+    required: false
+    default: None
+    description:
+      - Working mode of the RAID controller.  
+  storage_controllers/JBOD_state:
+    required: false
+    default: None
+    description:
+      - Specifies whether to enable the hard disk pass-through function. 
 """
 
 EXAMPLES = """
- - name: delete raid
-    ibmc_delete_raid:
+  - name: modify storage controller
+    ibmc_modify_storage_controller:
       ibmc_ip: "{{ ibmc_ip }}"
       ibmc_user: "{{ ibmc_user }}"
       ibmc_pswd: "{{ ibmc_pswd }}"
-      storage_id: "RAIDStorage0,RAIDStorage1"
-      volume_id: "LogicalDrive0,LogicalDrive1"
+      storage_controllers:
+       - storage_id: "RAIDStorage0"
+         JBOD_state: True
+       - storage_id: "RAIDStorage1"
+         mode: "JBOD"
 """
 
 RETURNS = """
-    {"result": True, "msg": "Delete RAID configuration successful!"}
+    {"result": True, "msg": "Modify storage controllers configuration Successfully."}
 """
 
 from ansible.module_utils.basic import AnsibleModule
 
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
-from ibmc_ansible.ibmc_redfish_api.api_manage_raid import delete_raid
+from ibmc_ansible.ibmc_redfish_api.api_manage_storage_controller import modify_storage_controller
 from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.utils import is_support_server
-from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, LIST
 from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
-def ibmc_delete_raid_module(module):
+def ibmc_modify_storage_controller_module(module):
     """
     Function:
-        Delete RAID configuration
+        Modify storage_controller configuration
     Args:
-        module       (class):
+        module: AnsibleModule
     Returns:
-        "result": False
-        "msg": 'not run delete raid yet'
+        ret : a dict of task result
+            "result": True or False
+            "msg": description for success or failure
     Raises:
         None
     Examples:
 
     Author:
-    Date: 2019/11/12 15:11
+    Date: 2023/12/8 17:33
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
         if ret.get('result'):
-            ret = delete_raid(ibmc, module.params)
+            ret = modify_storage_controller(ibmc, module.params)
     return ret
 
 
 def main():
-    # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
             "ibmc_ip": {REQUIRED: True, TYPE: STR},
             "ibmc_user": {REQUIRED: True, TYPE: STR},
             "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
-            "storage_id": {REQUIRED: True, TYPE: STR},
-            "volume_id": {REQUIRED: True, TYPE: STR}
+            "storage_controllers": {REQUIRED: True, TYPE: LIST},
         },
         supports_check_mode=False)
-
-    ansible_ibmc_run_module(ibmc_delete_raid_module, module, log, report)
+    ansible_ibmc_run_module(ibmc_modify_storage_controller_module, module, log, report)
 
 
 if __name__ == '__main__':

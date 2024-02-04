@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = """
 module: ibmc_https_crl_import
@@ -98,7 +100,7 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_redfish_api.api_https_cert_manage import https_cert_import
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.utils import is_support_server
-from ibmc_ansible.utils import SERVERTYPE
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, INT
 from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
@@ -118,7 +120,7 @@ def ibmc_https_crl_import_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if not ret['result']:
+        if not ret.get('result'):
             return ret
 
         file_type = "crl"
@@ -133,15 +135,15 @@ def ibmc_https_crl_import_module(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "certpath": {"required": True, "type": 'str'},
-            "certID": {"required": False, "type": 'int'},
-            "usage": {"required": False, "type": 'str'},
-            "import_location": {"required": True, "type": 'str'},
-            "file_server_user": {"required": False, "type": 'str', "no_log": True},
-            "file_server_pswd": {"required": False, "type": 'str', "no_log": True}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "certpath": {REQUIRED: True, TYPE: STR},
+            "certID": {REQUIRED: False, TYPE: INT},
+            "usage": {REQUIRED: False, TYPE: STR},
+            "import_location": {REQUIRED: True, TYPE: STR},
+            "file_server_user": {REQUIRED: False, TYPE: STR, NO_LOG: True},
+            "file_server_pswd": {REQUIRED: False, TYPE: STR, NO_LOG: True}
         },
         supports_check_mode=False)
 

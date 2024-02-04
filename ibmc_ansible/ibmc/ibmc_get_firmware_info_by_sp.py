@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = """
 module: ibmc_get_firmware_info_by_sp
@@ -56,8 +58,8 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_redfish_api.api_inband_fw_update import get_fw_info
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.utils import is_support_server
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
 
 
 def ibmc_get_firmware_info_by_sp_module(module):
@@ -78,7 +80,7 @@ def ibmc_get_firmware_info_by_sp_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             ret = get_fw_info(ibmc)
     return ret
 
@@ -86,9 +88,9 @@ def ibmc_get_firmware_info_by_sp_module(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
         },
         supports_check_mode=False)
     ansible_ibmc_run_module(ibmc_get_firmware_info_by_sp_module, module, log, report)

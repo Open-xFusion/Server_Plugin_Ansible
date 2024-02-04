@@ -142,7 +142,7 @@ from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.utils import is_support_server
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, BOOL, LIST
 
 
 def ibmc_set_snmp_trap_module(module):
@@ -163,7 +163,7 @@ def ibmc_set_snmp_trap_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             ret = set_snmp_trap(ibmc, module.params)
     return ret
 
@@ -172,17 +172,17 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "community": {"required": False, "type": 'str', "no_log": True},
-            "service_enabled": {"required": False, "type": 'bool'},
-            "trap_version": {"required": False, "type": 'str'},
-            "trap_v3_user": {"required": False, "type": 'str'},
-            "trap_mode": {"required": False, "type": 'str'},
-            "trap_server_identity": {"required": False, "type": 'str'},
-            "alarm_severity": {"required": False, "type": 'str'},
-            "trap_servers": {"required": False, "type": 'list'}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "community": {REQUIRED: False, TYPE: STR, NO_LOG: True},
+            "service_enabled": {REQUIRED: False, TYPE: BOOL},
+            "trap_version": {REQUIRED: False, TYPE: STR},
+            "trap_v3_user": {REQUIRED: False, TYPE: STR},
+            "trap_mode": {REQUIRED: False, TYPE: STR},
+            "trap_server_identity": {REQUIRED: False, TYPE: STR},
+            "alarm_severity": {REQUIRED: False, TYPE: STR},
+            "trap_servers": {REQUIRED: False, TYPE: LIST}
         },
         supports_check_mode=False)
 

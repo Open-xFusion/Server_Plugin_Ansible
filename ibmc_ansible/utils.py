@@ -43,6 +43,22 @@ SERVERHMMTYPE = 1
 # Server type
 SERVERTYPE = 0
 
+RESULT = "result"
+MSG = "msg"
+REQUIRED = "required"
+TYPE = "type"
+STR = "str"
+NO_LOG = "no_log"
+LIST = "list"
+DICT = "dict"
+BOOL = "bool"
+INT = "int"
+ELEMENTS = "elements"
+OPTIONS = "options"
+IBMC_IP = "ibmc_ip"
+DOUBLE_COLON = "::"
+ODATA_ID = "@odata.id"
+
 
 def set_result(log_function, msg, result, ret):
     """
@@ -89,15 +105,15 @@ def ansible_ibmc_run_module(function_callback, ansible_module, log, report):
     """
     try:
         ret = function_callback(ansible_module)
-        if ret['result'] is True:
-            report.info(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), ret['msg']))
-            ansible_module.exit_json(msg=ret['msg'])
+        if ret[RESULT] is True:
+            report.info(MSG_FORMAT % (str(ansible_module.params.get(IBMC_IP)), ret[MSG]))
+            ansible_module.exit_json(msg=ret[MSG])
         else:
-            report.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), ret['msg']))
-            ansible_module.fail_json(msg=ret['msg'])
+            report.error(MSG_FORMAT % (str(ansible_module.params.get(IBMC_IP)), ret[MSG]))
+            ansible_module.fail_json(msg=ret[MSG])
     except Exception as ex:
-        log.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), str(ex)))
-        report.error(MSG_FORMAT % (str(ansible_module.params.get("ibmc_ip")), str(ex)))
+        log.error(MSG_FORMAT % (str(ansible_module.params.get(IBMC_IP)), str(ex)))
+        report.error(MSG_FORMAT % (str(ansible_module.params.get(IBMC_IP)), str(ex)))
         ansible_module.fail_json(msg=str(ex))
 
 
@@ -117,10 +133,8 @@ def ansible_get_loger(log_file, report_file, logger_name):
     Author: xwh
     Date: 10/19/2019
     """
-    LOG_FILE = log_file
-    REPORT_FILE = report_file
 
-    log_hander = SetLogPermission(LOG_FILE, max_bytes=1024 * 1024, backup_count=100)
+    log_hander = SetLogPermission(log_file, max_bytes=1024 * 1024, backup_count=100)
     fmt = logging.Formatter("[%(asctime)s %(levelname)s ]- %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
     log_hander.setFormatter(fmt)
     log = logging.getLogger(logger_name)
@@ -128,7 +142,7 @@ def ansible_get_loger(log_file, report_file, logger_name):
     log.setLevel(logging.INFO)
 
     fmt = logging.Formatter("[%(asctime)s %(levelname)s ] - %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
-    report_hander = SetLogPermission(REPORT_FILE, max_bytes=1024 * 1024, backup_count=100)
+    report_hander = SetLogPermission(report_file, max_bytes=1024 * 1024, backup_count=100)
     report_hander.setFormatter(fmt)
     report = logging.getLogger(logger_name + "report")
     report.addHandler(report_hander)
@@ -169,7 +183,7 @@ def write_result(ibmc, result_file, result):
     except IOError as ex:
         ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
         ibmc.report_error("Failed to write result to %s" % result_file)
-        raise IOError("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
+        raise ex
 
 
 def write_result_csv(ibmc, result_file, header_csv, result_csv):
@@ -207,7 +221,7 @@ def write_result_csv(ibmc, result_file, header_csv, result_csv):
     except IOError as ex:
         ibmc.log_error("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
         ibmc.report_error("Failed to write result to %s" % result_file)
-        raise IOError("Failed to write result to %s, the error info is: %s" % (result_file, str(ex)))
+        raise ex
 
 
 def validate_ipv4(ip_str):
@@ -263,14 +277,13 @@ def validate_ipv6(ip_str):
     hex_re = re.compile(r'^:{0,1}([0-9a-fA-F]{0,4}:){0,7}[0-9a-fA-F]{0,4}:{0,1}$')
     # IPv4-compatible IPv6 format
     dotted_quad_re = re.compile(r'^:{0,1}([0-9a-fA-F]{0,4}:){2,6}(\d{1,3}\.){3}\d{1,3}$')
-
     if hex_re.match(ip_str):
         if ':::' in ip_str:
             return False
-        if '::' not in ip_str:
+        if DOUBLE_COLON not in ip_str:
             halves = ip_str.split(':')
             return len(halves) == 8 and halves[0] != '' and halves[-1] != ''
-        halves = ip_str.split('::')
+        halves = ip_str.split(DOUBLE_COLON)
         if len(halves) != 2:
             return False
         if halves[0] != '' and halves[0][0] == ':':
@@ -282,10 +295,10 @@ def validate_ipv6(ip_str):
     if dotted_quad_re.match(ip_str):
         if ':::' in ip_str:
             return False
-        if '::' not in ip_str:
+        if DOUBLE_COLON not in ip_str:
             halves = ip_str.split(':')
             return len(halves) == 7 and halves[0] != ''
-        halves = ip_str.split('::')
+        halves = ip_str.split(DOUBLE_COLON)
         if len(halves) > 2:
             return False
         hex_list = ip_str.split(':')
@@ -454,7 +467,7 @@ def set_ssl_cfg(verify, force_tls1_2, ciphers, log):
     return False
 
 
-def check_serverType(ibmc):
+def check_server_type(ibmc):
     """
     Function:
         check serverType:
@@ -481,13 +494,13 @@ def check_serverType(ibmc):
         return 0
 
 
-def is_support_server(ibmc, type):
+def is_support_server(ibmc, server_type):
     """
     Function:
 
     Args:
         ibmc (str):   IbmcBaseConnect Object
-        type:   SERVERTYPE,
+        server_type:   SERVERTYPE,
                 SERVERSWITYPE,
                 SERVERHMMTYPE
     Returns:
@@ -500,14 +513,14 @@ def is_support_server(ibmc, type):
     Author:
     Date: 10/10/2020
     """
-    ret = {"result": False, "msg": ''}
-    type_code = check_serverType(ibmc)
-    if type_code == type:
-        ret['result'] = True
+    ret = {RESULT: False, MSG: ''}
+    type_code = check_server_type(ibmc)
+    if type_code == server_type:
+        ret[RESULT] = True
     else:
         ibmc.log_error("The function is not supported!")
-        ret['result'] = False
-        ret['msg'] = "The function is not supported!"
+        ret[RESULT] = False
+        ret[MSG] = "The function is not supported!"
     return ret
 
 
@@ -525,12 +538,23 @@ def remote_file_path(file_path, module):
     Date: 2021/6/7 20:30
     """
     # File server type
-    FILE_SERVER = ("sftp", "https", "nfs", "cifs", "scp")
-    protocol, server_path = file_path.split("://")
+    file_server = ("sftp", "https", "nfs", "cifs", "scp")
+    if not file_path:
+        msg = "Remote file path cannot be empty. \n"
+        raise Exception(msg)
+
+    protocol_and_server_path = file_path.split("://")
+    # If it cannot be divided into two parts, The remote file path format is incorrect.
+    if len(protocol_and_server_path) != 2:
+        msg = "Invalid remote file path. \n"
+        raise Exception(msg)
+
+    protocol, server_path = protocol_and_server_path
     protocol = protocol.lower()
-    if protocol not in FILE_SERVER:
+    if protocol not in file_server:
         msg = "The protocol error, please choose from [sftp, https, nfs, cifs, scp] \n"
         raise Exception(msg)
+
     if module.params.get("file_server_user") and module.params.get(
             "file_server_pswd"):
         file_path = "%s://%s:%s@%s" % \

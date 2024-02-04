@@ -68,8 +68,8 @@ from ibmc_ansible.ibmc_redfish_api.api_manage_bios import get_bios_info
 from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.utils import is_support_server
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, LIST
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
 
 
 def ibmc_get_bios_module(module):
@@ -88,7 +88,7 @@ def ibmc_get_bios_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             ret = get_bios_info(ibmc, module.params["bios_attribute"])
     return ret
 
@@ -97,10 +97,10 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "bios_attribute": {"required": False, "type": 'list'}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "bios_attribute": {REQUIRED: False, TYPE: LIST}
         },
         supports_check_mode=False)
 

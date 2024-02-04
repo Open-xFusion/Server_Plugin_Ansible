@@ -10,18 +10,19 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-import requests
 import os
 import time
+import requests
 
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 from ibmc_ansible.ibmc_redfish_api.api_power_manager import manage_power, \
     get_power_status
 
 # Max Number of Queries, 40 times
-Query_TIME = 40
+QUERY_TIME = 40
 
 
 def get_bios_info(ibmc, attribute):
@@ -42,7 +43,7 @@ def get_bios_info(ibmc, attribute):
     ibmc.log_info("Start get BIOS info...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Get the return result of the redfish interface
     request_result_json = get_bios_request(ibmc)
@@ -82,7 +83,7 @@ def get_bios_info(ibmc, attribute):
                  "For more detail information please refer to %s \n" % (
                      file_name)
     ibmc.log_info("Get BIOS information successfully!")
-    ret = {'result': True, 'msg': report_msg}
+    ret = {RESULT: True, MSG: report_msg}
     return ret
 
 
@@ -104,7 +105,7 @@ def get_bios_request(ibmc):
     token = ibmc.bmc_token
 
     # URL of the Bios service
-    url = ibmc.system_uri + "/Bios"
+    url = "%s/Bios" % ibmc.system_uri
 
     # Initialize headers
     headers = {'X-Auth-Token': token}
@@ -154,7 +155,7 @@ def set_bios(ibmc, bios_info, immediately):
     ibmc.log_info("Start to set BIOS configuration resource info...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Verify the BIOS content set by the user.
     if not isinstance(bios_info, dict):
@@ -171,12 +172,12 @@ def set_bios(ibmc, bios_info, immediately):
     # Obtain the request result.
     payload = {"Attributes": bios_info}
     request_result = set_bios_request(ibmc, payload)
-    if not request_result.get('result') or not immediately:
+    if not request_result.get(RESULT) or not immediately:
         return request_result
 
     # Restart the server
     restart_result = restart_server(ibmc)
-    if not restart_result.get('result'):
+    if not restart_result.get(RESULT):
         return restart_result
 
     ret = verify_configuration(ibmc, bios_info)
@@ -197,20 +198,20 @@ def restart_server(ibmc):
          None
     Date: 2021/2/22 21:13
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     ibmc.log_info(
         "Restart the server immediately for the configuration to take effect.")
 
     command = "forcerestart"
     restart_result = manage_power(ibmc, command)
-    if not restart_result.get('result'):
+    if not restart_result.get(RESULT):
         return restart_result
 
     # get power status
     for _ in range(100):
         time.sleep(2)
         pow_ret = get_power_status(ibmc)
-        if "on" in pow_ret.get("msg").lower():
+        if "on" in pow_ret.get(MSG).lower():
             log_msg = "Server restart successfully"
             set_result(ibmc.log_info, log_msg, True, ret)
             break
@@ -235,15 +236,15 @@ def verify_configuration(ibmc, bios_info):
          None
     Date: 2021/2/22 21:13
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     ibmc.log_info(
         "Waiting for BIOS settings to take effect.")
 
     try:
-        for cnt in range(Query_TIME):
+        for _ in range(QUERY_TIME):
             time.sleep(10)
             setting_ret = get_bios_setting_result(ibmc, bios_info)
-            if setting_ret.get('result'):
+            if setting_ret.get(RESULT):
                 return setting_ret
 
     except Exception as e:
@@ -269,7 +270,7 @@ def get_bios_setting_result(ibmc, bios_info):
          None
     Date: 2021/2/22 21:13
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     current_bios_json = get_bios_request(ibmc)
     current_bios = current_bios_json.get("Attributes")
@@ -307,14 +308,16 @@ def set_bios_request(ibmc, payload):
     Date: 2021/2/22 21:13
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Initialize request information.
     token = ibmc.get_token()
-    url = ibmc.system_uri + "/Bios/Settings"
+    url = "%s/Bios/Settings" % ibmc.system_uri
     e_tag = ibmc.get_etag(url)
-    headers = {'content-type': 'application/json',
-               'X-Auth-Token': token, 'If-Match': e_tag}
+    headers = {
+        'content-type': 'application/json',
+        'X-Auth-Token': token, 'If-Match': e_tag
+    }
 
     # send request to set bios
     try:
@@ -357,13 +360,15 @@ def reset_bios(ibmc, immediately):
     ibmc.log_info("Start to reset BIOS configuration resource info...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Initialize request information.
     token = ibmc.get_token()
-    url = ibmc.system_uri + "/Bios/Actions/Bios.ResetBios"
-    headers = {'content-type': 'application/json',
-               'X-Auth-Token': token}
+    url = "%s/Bios/Actions/Bios.ResetBios" % ibmc.system_uri
+    headers = {
+        'content-type': 'application/json',
+        'X-Auth-Token': token
+    }
     payload = {}
 
     # send request to reset bios
@@ -391,7 +396,7 @@ def reset_bios(ibmc, immediately):
     # Restart the server
     if immediately:
         restart_ret = restart_server(ibmc)
-        if restart_ret.get('result'):
+        if restart_ret.get(RESULT):
             log_msg = "Reset BIOS configuration resource info successfully! " \
                       "The server has been restarted."
             set_result(ibmc.log_info, log_msg, True, ret)

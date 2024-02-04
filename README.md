@@ -6,7 +6,7 @@ I. General Information
 
     Name:     Ansible Plugin Pack for xFusion Server
     Function: Query, Configuration, Deployment, and Upgrade
-    Version:  2.0.13
+    Version:  2.0.14
 
 	
 II. Description

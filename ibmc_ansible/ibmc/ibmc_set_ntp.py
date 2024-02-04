@@ -107,7 +107,7 @@ from ibmc_ansible.ibmc_redfish_api.api_manage_ntp import set_ntp
 from ibmc_ansible.ibmc_logger import log, report
 from ibmc_ansible.utils import is_support_server
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, BOOL, INT
 
 
 def ibmc_set_ntp_module(module):
@@ -128,7 +128,7 @@ def ibmc_set_ntp_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             ret = set_ntp(ibmc, module.params)
     return ret
 
@@ -137,16 +137,16 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "service_enabled": {"required": False, "type": 'bool'},
-            "pre_ntp_server": {"required": False, "type": 'str'},
-            "alt_ntp_server": {"required": False, "type": 'str'},
-            "server_auth_enabled": {"required": False, "type": 'bool'},
-            "ntp_address_origin": {"required": False, "type": 'str'},
-            "min_polling_interval": {"required": False, "type": 'int'},
-            "max_polling_interval": {"required": False, "type": 'int'}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "service_enabled": {REQUIRED: False, TYPE: BOOL},
+            "pre_ntp_server": {REQUIRED: False, TYPE: STR},
+            "alt_ntp_server": {REQUIRED: False, TYPE: STR},
+            "server_auth_enabled": {REQUIRED: False, TYPE: BOOL},
+            "ntp_address_origin": {REQUIRED: False, TYPE: STR},
+            "min_polling_interval": {REQUIRED: False, TYPE: INT},
+            "max_polling_interval": {REQUIRED: False, TYPE: INT}
         },
         supports_check_mode=False)
 

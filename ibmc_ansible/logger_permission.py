@@ -36,6 +36,10 @@ class SetLogPermission(RotatingFileHandler):
                                                    backup_count, encoding,
                                                    delay)
 
+    def rotate(self, source, dest):
+        logging.handlers.RotatingFileHandler.rotate(self, source, dest)
+        os.chmod(dest, stat.S_IRUSR)
+
     def _open(self):
         try:
             open_log = super()._open()
@@ -43,7 +47,3 @@ class SetLogPermission(RotatingFileHandler):
             open_log = super(SetLogPermission, self)._open()
         os.chmod(open_log.name, stat.S_IWUSR | stat.S_IRUSR)
         return open_log
-
-    def rotate(self, source, backup_log):
-        logging.handlers.RotatingFileHandler.rotate(self, source, backup_log)
-        os.chmod(backup_log, stat.S_IRUSR)

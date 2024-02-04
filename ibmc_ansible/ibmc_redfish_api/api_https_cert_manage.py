@@ -19,10 +19,13 @@ from ibmc_ansible.ibmc_redfish_api.common_api import wait_task
 from ibmc_ansible.ibmc_redfish_api.common_api import result_parse
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import RESULT, MSG
 
 FILE_SERVER = ("sftp", "https", "nfs", "cifs", "scp")
 USAGE = {"filetransfer": "FileTransfer"}
 CERT_FILE = (".crt", ".cer", ".pem")
+
+CONTENT = "Content"
 
 
 def https_cert_import(ibmc, module, file_type):
@@ -41,7 +44,7 @@ def https_cert_import(ibmc, module, file_type):
          None
     Date: 2021/8/19 21:13
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     uri = None
     info = None
@@ -71,7 +74,7 @@ def https_cert_import(ibmc, module, file_type):
 
     failed_info = "%s failed!" % info
     result = result_parse(ibmc, request_result, failed_info)
-    if not result.get('result'):
+    if not result.get(RESULT):
         return result
 
     # Importing from the tmp directory does not need to wait.
@@ -87,11 +90,11 @@ def https_cert_import(ibmc, module, file_type):
 
     # The task waiting time does not exceed three and a half minutes.
     task_ret = wait_task(ibmc, task_id, info, wait_time=210)
-    if task_ret.get("result") is True:
+    if task_ret.get(RESULT) is True:
         log_info = "%s successfully!" % info
         set_result(ibmc.log_info, log_info, True, ret)
     else:
-        log_error = "%s failed! The error info is %s" % (info, task_ret.get("msg"))
+        log_error = "%s failed! The error info is %s" % (info, task_ret.get(MSG))
         set_result(ibmc.log_error, log_error, False, ret)
     return ret
 
@@ -183,21 +186,21 @@ def get_cert_path(ibmc, file_type, information, module):
 
     location = module.params.get("import_location").lower()
     if location in FILE_SERVER:
-        payload["Content"] = remote_file_path(module.params.get("certpath"),
+        payload[CONTENT] = remote_file_path(module.params.get("certpath"),
                                               module)
     elif location == "tmp":
-        payload["Content"] = file_path
+        payload[CONTENT] = file_path
 
     elif location == "local":
         # Upload the certificate to the tmp directory of the BMC.
         upload_file_res = upload_file(ibmc, file_path)
-        if not upload_file_res.get("result"):
+        if not upload_file_res.get(RESULT):
             log_error = "%s failed! The detailed " \
                         "information is as follows: %s " \
-                        % (information, upload_file_res.get("msg"))
+                        % (information, upload_file_res.get(MSG))
             ibmc.log_error(log_error)
             raise Exception(log_error)
-        payload["Content"] = "/tmp/web/%s" % file_name
+        payload[CONTENT] = "/tmp/web/%s" % file_name
 
     else:
         log_error = "%s failed! The import_location parameter is incorrect. " \
@@ -223,7 +226,7 @@ def delete_https_ca(ibmc, module):
     Date: 2021/8/27 21:13
     """
     ibmc.log_info("Start to delete the certificate...")
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     failed_info = "Delete remote https server root ca failed!"
 
     # Available values for cert_id: [5, 6, 7, 8].
@@ -249,7 +252,7 @@ def delete_https_ca(ibmc, module):
         return ret
 
     result = result_parse(ibmc, request_result, failed_info)
-    if not result.get('result'):
+    if not result.get(RESULT):
         return result
 
     log_info = "Delete remote https server root ca successful!"
@@ -273,7 +276,7 @@ def set_https_cert_verification(ibmc, module):
     Date: 2021/8/27 21:13
     """
     ibmc.log_info("Start to set https cert verification...")
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     failed_info = "Set https cert verification failed!"
 
     verify = module.params.get("verify_cmd")
@@ -291,8 +294,7 @@ def set_https_cert_verification(ibmc, module):
     token = ibmc.get_token()
     etag = ibmc.get_etag(uri)
     # Initialize headers
-    headers = {'content-type': 'application/json', 'X-Auth-Token': token,
-               'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
 
     # Send a Patch request.
     try:
@@ -304,7 +306,7 @@ def set_https_cert_verification(ibmc, module):
         return ret
 
     result = result_parse(ibmc, request_result, failed_info)
-    if not result.get('result'):
+    if not result.get(RESULT):
         return result
 
     log_info = "Set https cert verification successful!"
@@ -327,7 +329,7 @@ def get_security_service_information(ibmc):
     Date: 2021/8/27 21:13
     """
     ibmc.log_info("Start to get security service information...")
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     failed_info = "Get security service information failed!"
 
     uri = "%s/SecurityService" % ibmc.manager_uri
@@ -345,7 +347,7 @@ def get_security_service_information(ibmc):
         return ret
 
     result = result_parse(ibmc, request_result, failed_info)
-    if not result.get('result'):
+    if not result.get(RESULT):
         return result
 
     request_json = request_result.json()

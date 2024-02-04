@@ -88,7 +88,9 @@ from ansible.module_utils.basic import AnsibleModule
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.ibmc_redfish_api.api_manage_logs import collect_log
 from ibmc_ansible.ibmc_logger import log, report
-from ibmc_ansible.utils import ansible_ibmc_run_module, SERVERTYPE, is_support_server
+from ibmc_ansible.utils import is_support_server
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG
+from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
 def ibmc_collect_log_module(module):
@@ -107,12 +109,13 @@ def ibmc_collect_log_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
-            save_location = {"save_mode": module.params.get("save_mode"),
-                             "file_server_ip": module.params.get("file_server_ip"),
-                             "file_server_user": module.params.get("file_server_user"),
-                             "file_server_pswd": module.params.get("file_server_pswd")
-                             }
+        if ret.get('result'):
+            save_location = {
+                "save_mode": module.params.get("save_mode"),
+                "file_server_ip": module.params.get("file_server_ip"),
+                "file_server_user": module.params.get("file_server_user"),
+                "file_server_pswd": module.params.get("file_server_pswd")
+            }
             ret = collect_log(ibmc, save_location, module.params.get("file_name"), log_type="IBMC")
     return ret
 
@@ -121,14 +124,14 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "save_mode": {"required": True, "type": 'str'},
-            "file_server_ip": {"required": False, "type": 'str'},
-            "file_server_user": {"required": False, "type": 'str'},
-            "file_server_pswd": {"required": False, "type": 'str', "no_log": True},
-            "file_name": {"required": True, "type": 'str'}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "save_mode": {REQUIRED: True, TYPE: STR},
+            "file_server_ip": {REQUIRED: False, TYPE: STR},
+            "file_server_user": {REQUIRED: False, TYPE: STR},
+            "file_server_pswd": {REQUIRED: False, TYPE: STR, NO_LOG: True},
+            "file_name": {REQUIRED: True, TYPE: STR}
         },
         supports_check_mode=False)
 
