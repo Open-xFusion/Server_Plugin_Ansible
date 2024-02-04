@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = """
 module: ibmc_profile_export
@@ -90,7 +92,7 @@ from ibmc_ansible.utils import set_result
 from ibmc_ansible.ibmc_redfish_api.api_server_profile import server_profile
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.utils import is_support_server
-from ibmc_ansible.utils import SERVERTYPE
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG
 from ibmc_ansible.utils import ansible_ibmc_run_module
 from ibmc_ansible.utils import remote_file_path
 
@@ -111,7 +113,7 @@ def ibmc_profile_export_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             all_file_path = (module.params.get("local_export"), module.params.get("remote_export"))
             if all(all_file_path) or not any(all_file_path):
                 log_error = "Profile export failed! Please select a profile " \
@@ -168,14 +170,14 @@ def get_profile_name(ibmc, module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "file_name": {"required": False, "type": 'str'},
-            "local_export": {"required": False, "type": 'str'},
-            "remote_export": {"required": False, "type": 'str'},
-            "file_server_user": {"required": False, "type": 'str', "no_log": True},
-            "file_server_pswd": {"required": False, "type": 'str', "no_log": True}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "file_name": {REQUIRED: False, TYPE: STR},
+            "local_export": {REQUIRED: False, TYPE: STR},
+            "remote_export": {REQUIRED: False, TYPE: STR},
+            "file_server_user": {REQUIRED: False, TYPE: STR, NO_LOG: True},
+            "file_server_pswd": {REQUIRED: False, TYPE: STR, NO_LOG: True}
         },
         supports_check_mode=False)
 

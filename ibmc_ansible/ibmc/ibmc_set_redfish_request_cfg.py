@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = r'''
 ---
@@ -66,6 +68,7 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.utils import set_ssl_cfg
 from ibmc_ansible.utils import ansible_ibmc_run_module
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import REQUIRED, TYPE, STR, BOOL
 
 
 def ibmc_set_request(module):
@@ -85,12 +88,13 @@ def ibmc_set_request(module):
     Date: 2019/12/12 17:33
     """
     ret = {}
-    if module.params.get("verify") is False:
+    verify_str = "verify"
+    if module.params.get(verify_str) is False:
         verify = False
-    elif module.params.get("verify") is None or module.params.get("verify") == "":
+    elif module.params.get(verify_str) is None or module.params.get(verify_str) == "":
         verify = True
     else:
-        if module.params.get("verify") is True and module.params.get("certify"):
+        if module.params.get(verify_str) is True and module.params.get("certify"):
             verify = module.params.get("certify")
         else:
             verify = True
@@ -113,10 +117,10 @@ def ibmc_set_request(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "verify": {"required": True, "type": 'bool'},
-            "certify": {"required": False, "type": 'str'},
-            "force_tls1_2": {"required": False, "type": 'bool'},
-            "ciphers": {"required": False, "type": 'str'},
+            "verify": {REQUIRED: True, TYPE: BOOL},
+            "certify": {REQUIRED: False, TYPE: STR},
+            "force_tls1_2": {REQUIRED: False, TYPE: BOOL},
+            "ciphers": {REQUIRED: False, TYPE: STR},
 
         },
         supports_check_mode=False)

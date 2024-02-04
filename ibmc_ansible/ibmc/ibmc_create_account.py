@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = r'''
 ---
@@ -77,6 +79,7 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_redfish_api.api_manage_account import create_account
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
+from ibmc_ansible.utils import REQUIRED, TYPE, STR, NO_LOG
 from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
@@ -108,12 +111,12 @@ def ibmc_create_account_module(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "new_account_user": {"required": True, "type": 'str'},
-            "new_account_pswd": {"required": True, "type": 'str', "no_log": True},
-            "roleid": {"required": True, "type": 'str'},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "new_account_user": {REQUIRED: True, TYPE: STR},
+            "new_account_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "roleid": {REQUIRED: True, TYPE: STR},
         },
         supports_check_mode=False)
     ansible_ibmc_run_module(ibmc_create_account_module, module, log, report)

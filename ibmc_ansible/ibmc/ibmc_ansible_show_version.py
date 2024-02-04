@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = r'''
 ---
@@ -29,7 +31,7 @@ EXAMPLES = r'''
 '''
 
 RETURNS = r'''
-    "msg": xFusion iBMC ansible modules version is 2.0.13
+    "msg": xFusion iBMC ansible modules version is 2.0.14
 '''
 
 from ansible.module_utils.basic import AnsibleModule
@@ -39,7 +41,7 @@ def main():
     module = AnsibleModule(
         argument_spec={},
         supports_check_mode=False)
-    module.exit_json(msg="xFusion iBMC ansible modules version is 2.0.13")
+    module.exit_json(msg="xFusion iBMC ansible modules version is 2.0.14")
 
 
 if __name__ == '__main__':

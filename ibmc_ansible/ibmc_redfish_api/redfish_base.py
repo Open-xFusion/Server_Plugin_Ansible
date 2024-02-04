@@ -21,6 +21,7 @@ from ibmc_ansible.ibmc_logger import log
 
 try:
     from ssl import PROTOCOL_TLSv1_2
+
     IMPORT_TLS = True
 except ImportError as e:
     IMPORT_TLS = False
@@ -30,11 +31,19 @@ try:
     from ssl import PROTOCOL_SSLv23 as PROTOCOL_TLS
 except ImportError as e:
     from ssl import PROTOCOL_TLS as PROTOCOL_TLS
+
     log.error(str(e))
 
 from ibmc_ansible.utils import read_ssl_ciphers
 from ibmc_ansible.utils import read_ssl_verify
 from ibmc_ansible.utils import read_ssl_force_tls
+
+LOCATION = "Location"
+MESSAGE = "message"
+STATUS_CODE = "status_code"
+HEADERS = "headers"
+ETAG_UPPER = "ETag"
+ETAG_LOWER = "etag"
 
 
 class IbmcBaseConnect():
@@ -70,7 +79,7 @@ class IbmcBaseConnect():
                                     "DHE-DSS-AES128-GCM-SHA256:DHE-DSS-AES256-GCM-SHA384:"
                                     "ECDHE-RSA-CHACHA20-POLY1305")
 
-        class Com_Adapter(HTTPAdapter):
+        class ComAdapter(HTTPAdapter):
 
             def init_poolmanager(self, *pool_args, **pool_kwargs):
                 if "ssl_context" in dir(HTTPSConnection(host="")):
@@ -82,9 +91,9 @@ class IbmcBaseConnect():
                     self.poolmanager = PoolManager(
                         *pool_args, **pool_kwargs)
 
-        self.adapter = Com_Adapter()
+        self.adapter = ComAdapter()
         if IMPORT_TLS:
-            class Tls1_2Adapter(HTTPAdapter):
+            class TLS12Adapter(HTTPAdapter):
                 """
                 Fuction : force to user tls1.2
                 Args:
@@ -105,8 +114,9 @@ class IbmcBaseConnect():
                     else:
                         self.poolmanager = PoolManager(
                             *pool_args, ssl_version=PROTOCOL_TLSv1_2, **pool_kwargs)
+
             if self.tls1_2:
-                self.adapter = Tls1_2Adapter()
+                self.adapter = TLS12Adapter()
         else:
             if self.tls1_2:
                 raise Exception("import ssl.PROTOCOL_TLSv1_2 exception")
@@ -116,10 +126,34 @@ class IbmcBaseConnect():
         self.root_uri = ''.join(["https://%s" % self.ip, "/redfish/v1"])
         system_number = self._get_system_uri()
         number = system_number.split("/")[4]
-        self.chassis_uri = self.root_uri + "/Chassis/" + number
-        self.manager_uri = self.root_uri + "/Managers/" + number
-        self.eventsvc_uri = self.root_uri + "/EventService"
-        self.system_uri = self.root_uri + "/Systems/" + number
+        self.chassis_uri = "%s/Chassis/%s" % (self.root_uri, number)
+        self.manager_uri = "%s/Managers/%s" % (self.root_uri, number)
+        self.eventsvc_uri = "%s/EventService" % self.root_uri
+        self.system_uri = "%s/Systems/%s" % (self.root_uri, number)
+
+    def __enter__(self):
+        """
+        Args:
+            self
+        Returns:
+            None
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        return self
+
+    def __exit__(self, *args):
+        """
+        Args:
+            *args
+        Returns:
+            None
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        self._close()
 
     def debug_info(self, msg):
         """
@@ -211,44 +245,7 @@ class IbmcBaseConnect():
         else:
             self.report.error("%s -- %s" % (self.ip, msg))
 
-    def __enter__(self):
-        """
-        Args:
-            self
-        Returns:
-            None
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        return self
-
-    def __exit__(self, *args):
-        """
-        Args:
-            *args
-        Returns:
-            None
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        self._close()
-
-    def _close(self):
-        """
-        Args:
-            self
-        Returns:
-            None
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        self.delete_session()
-        self.session.close()
-
-    def request(self, method, resource, headers=None, data=None, files=None, tmout=10):
+    def request(self, method, resource, headers=None, data=None, tmout=10):
         """
         Args:
                 method            (str):
@@ -264,9 +261,10 @@ class IbmcBaseConnect():
         Date: 10/19/2019
         """
         if headers is None:
-            headers = {'X-Auth-Token': self.bmc_token,
-                       'content-type': 'application/json'
-                       }
+            headers = {
+                'X-Auth-Token': self.bmc_token,
+                'content-type': 'application/json'
+            }
 
         if isinstance(data, dict):
             payload = json.dumps(data)
@@ -276,7 +274,7 @@ class IbmcBaseConnect():
         try:
             if method == 'POST':
                 r = self.session.post(
-                    url, data=payload, headers=headers, files=files, verify=self.verify, timeout=tmout)
+                    url, data=payload, headers=headers, verify=self.verify, timeout=tmout)
             elif method == 'GET':
                 r = self.session.get(
                     url, data=payload, headers=headers, verify=self.verify, timeout=tmout)
@@ -318,12 +316,12 @@ class IbmcBaseConnect():
                 raise Exception(
                     "Failed to create session, The response is none")
             elif r.status_code == 201:
-                index = r.headers['Location'].find("/redfish")
+                index = r.headers[LOCATION].find("/redfish")
                 if index != -1:
-                    location = r.headers['Location'][index:]
+                    location = r.headers[LOCATION][index:]
                     session_id = location.split('/')[5]
                 else:
-                    location = r.headers['Location']
+                    location = r.headers[LOCATION]
                     session_id = location.split('/')[5]
                 token = r.headers['X-Auth-Token']
                 self._set_token(token)
@@ -359,60 +357,30 @@ class IbmcBaseConnect():
         try:
             r = self.request('DELETE', url, data=playload, tmout=timeout)
         except Exception as ex:
-            self.log_error(
-                "Failed to delete session, The error info is: %s" % str(ex))
+            self.log_error("Failed to delete session, The error info is: %s" % str(ex))
             raise
         if r is None:
-            ret = {'status_code': 999,
-                   'message': 'HTTP request exception!!',
-                   'headers': ''}
+            ret = {
+                STATUS_CODE: 999,
+                MESSAGE: 'HTTP request exception!!',
+                HEADERS: ''
+            }
         elif r.status_code == 200:
-            ret = {'status_code': r.status_code,
-                   'message': r.content,
-                   'headers': r.headers}
+            ret = {
+                STATUS_CODE: r.status_code,
+                MESSAGE: r.content,
+                HEADERS: r.headers
+            }
         elif r.status_code == 401:
             self.log_warn("delete session failed. The error code is: 401 ")
-            ret = {'status_code': r.status_code,
-                   'message': r.content,
-                   'headers': r.headers}
+            ret = {
+                STATUS_CODE: r.status_code,
+                MESSAGE: r.content,
+                HEADERS: r.headers
+            }
         else:
             raise Exception("Failed to delete session, The error code is: %s, The error info is %s" %
                             (str(r.status_code), str(r.json())))
-        return ret
-
-    def _get_system_uri(self):
-        """
-        Args:
-            self
-        Returns:
-            uri
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        uri = "%s/Managers" % self.root_uri
-        try:
-            response = self.request('GET', uri)
-        except Exception as ex:
-            self.log_error(
-                "Get system_uri failed! The uri is : %s, The error is %s" % (str(uri), str(ex)))
-            raise
-        if response is None:
-            self.log_error("get system_uri failed! uri :%s " % uri)
-            raise Exception("get system uri exception response is none")
-        else:
-            if response.status_code != 200:
-                self.log_error("get system_uri failed, The response is: %s, The uri is: %s" % (
-                    str(response), str(uri)))
-                raise Exception(
-                    "get system_uri failed, The response is: %s" % str(response))
-            try:
-                ret = response.json()
-                ret = self.get_server_url(ret)
-            except Exception as ex:
-                self.log_error(
-                    "Failed to get system_uri, The error info is: %s" % str(ex))
-                raise
         return ret
 
     def get_server_url(self, ret):
@@ -456,6 +424,19 @@ class IbmcBaseConnect():
             Exception
         Date: 10/19/2019
         """
+        etag, _ = self.get_etag_and_message(uri)
+        return etag
+
+    def get_etag_and_message(self, uri):
+        """
+        Args:
+                uri            (str):    url of etag
+        Returns:
+            etag, message
+        Raises:
+            Exception
+        Date: 12/8/2023
+        """
         etag = ''
         # get Etag
         try:
@@ -467,25 +448,27 @@ class IbmcBaseConnect():
         if response is None:
             raise Exception("get etag response is none")
         elif response.status_code == 200:
-            ret = {'status_code': 200, 'message': response.content,
-                   'headers': response.headers}
-            if 'ETag' in ret['headers'].keys():
-                etag = ret['headers']['ETag']
-            elif 'etag' in ret['headers'].keys():
-                etag = ret['headers']['etag']
+            ret = {STATUS_CODE: 200, MESSAGE: response.json(), HEADERS: response.headers}
+            if ret.get(HEADERS):
+                if ETAG_UPPER in ret.get(HEADERS).keys():
+                    etag = ret[HEADERS][ETAG_UPPER]
+                elif ETAG_LOWER in ret.get(HEADERS).keys():
+                    etag = ret[HEADERS][ETAG_LOWER]
         else:
             try:
-                ret = {'status_code': response.status_code,
-                       'message': response.json(), 'headers': response.headers}
+                ret = {
+                    STATUS_CODE: response.status_code,
+                    MESSAGE: response.json(), HEADERS: response.headers
+                }
             except Exception as ex:
                 self.log_error(
                     "Failed to get etag, The error info is: %s" % str(ex))
                 raise
-            if 'Etag' in ret['headers'].keys():
-                etag = ret['headers']['ETag']
-            if 'etag' in ret['headers'].keys():
-                etag = ret['headers']['etag']
-        return etag
+            if ETAG_UPPER in ret[HEADERS].keys():
+                etag = ret[HEADERS][ETAG_UPPER]
+            if ETAG_LOWER in ret[HEADERS].keys():
+                etag = ret[HEADERS][ETAG_LOWER]
+        return etag, ret[MESSAGE]
 
     def get_task_info(self, taskid):
         """
@@ -522,42 +505,6 @@ class IbmcBaseConnect():
         """
         return self.bmc_token
 
-    def _get_bmc_session_id(self):
-        """
-        Args:
-            self
-        Returns:
-            self.bmc_session_id
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        return self.bmc_session_id
-
-    def _set_token(self, token):
-        """
-        Args:
-            token
-        Returns:
-            None
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        self.bmc_token = token
-
-    def _set_bmc_session_id(self, session_id):
-        """
-        Args:
-                session_id            (str):   session_id
-        Returns:
-            None
-        Raises:
-            None
-        Date: 10/19/2019
-        """
-        self.bmc_session_id = session_id
-
     def get_systems_resource(self):
         """
         Function:
@@ -584,8 +531,7 @@ class IbmcBaseConnect():
         except Exception as ex:
             self.log_error(
                 "Get systems info send command exception, %s" % str(ex))
-            raise Exception(
-                "Get systems info send command exception, exception is: %s" % str(ex))
+            raise ex
         return systems_json
 
     def get_chassis_resource(self):
@@ -616,8 +562,7 @@ class IbmcBaseConnect():
         except Exception as ex:
             self.log_error(
                 "Get chassis info send command exception, %s" % str(ex))
-            raise Exception(
-                "Get chassis info send command exception, exception is: %s" % str(ex))
+            raise ex
         return chassis_json
 
     def get_manager_resource(self):
@@ -649,8 +594,7 @@ class IbmcBaseConnect():
         except Exception as ex:
             self.log_error(
                 "Get manager info send command exception, %s" % str(ex))
-            raise Exception(
-                "Get manager info send command exception, exception is: %s" % str(ex))
+            raise ex
         return manager_json
 
     def get_ibmc_version(self):
@@ -713,18 +657,18 @@ class IbmcBaseConnect():
            Exception
         Date: 10/30/2019
         """
-        OLD_VESION_STYLE = r'^\d+.\d*\d$'
-        NEW_VERSION_STYLE = r'^\d+.\d+.\d+.\d*\d$'
+        old_vesion_style = r'^\d+.\d*\d$'
+        new_version_style = r'^\d+.\d+.\d+.\d*\d$'
 
         bmc_version = self.get_ibmc_version()
         self.log_info("bmc_version is " + bmc_version)
         # bmc version is old style and  except veison is new style
-        if re.match(OLD_VESION_STYLE, bmc_version) and re.match(NEW_VERSION_STYLE, except_version):
+        if re.match(old_vesion_style, bmc_version) and re.match(new_version_style, except_version):
             self.log_info(
                 "bmc_version and except_version is not the same style")
             return True
         # bmc version is new style and  except veison is old style
-        if re.match(NEW_VERSION_STYLE, bmc_version) and (re.match(OLD_VESION_STYLE, except_version)):
+        if re.match(new_version_style, bmc_version) and (re.match(old_vesion_style, except_version)):
             self.log_info(
                 "bmc_version and  except_version is not the same style")
             return True
@@ -754,6 +698,96 @@ class IbmcBaseConnect():
         if sp_version.get("APPVersion") >= except_version:
             return True
         return False
+
+    def _get_system_uri(self):
+        """
+        Args:
+            self
+        Returns:
+            uri
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        uri = "%s/Managers" % self.root_uri
+        try:
+            response = self.request('GET', uri)
+        except Exception as ex:
+            self.log_error(
+                "Get system_uri failed! The uri is : %s, The error is %s" % (str(uri), str(ex)))
+            raise
+        if response is None:
+            self.log_error("get system_uri failed! uri :%s " % uri)
+            raise Exception("get system uri exception response is none")
+        else:
+            if response.status_code != 200:
+                self.log_error("get system_uri failed, The response is: %s, The uri is: %s" % (
+                    str(response), str(uri)))
+                raise Exception(
+                    "get system_uri failed, The response is: %s" % str(response))
+            try:
+                ret = response.json()
+                ret = self.get_server_url(ret)
+            except Exception as ex:
+                self.log_error(
+                    "Failed to get system_uri, The error info is: %s" % str(ex))
+                raise
+        return ret
+
+    def _get_bmc_session_id(self):
+        """
+        Args:
+            self
+        Returns:
+            self.bmc_session_id
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        return self.bmc_session_id
+
+    def _set_token(self, token):
+        """
+        Args:
+            token
+        Returns:
+            None
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        self.bmc_token = token
+
+    def _set_bmc_session_id(self, session_id):
+        """
+        Args:
+                session_id            (str):   session_id
+        Returns:
+            None
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        self.bmc_session_id = session_id
+
+    def _close(self):
+        """
+        Args:
+            self
+        Returns:
+            None
+        Raises:
+            None
+        Date: 10/19/2019
+        """
+        try:
+            self.delete_session()
+        except Exception as ex:
+            self.log_error(str(ex))
+        try:
+            self.session.close()
+        except Exception as ex:
+            self.log_error(str(ex))
 
 
 if __name__ == '__main__':

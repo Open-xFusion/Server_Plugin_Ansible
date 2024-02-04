@@ -1,0 +1,25 @@
+---
+- hosts: myhosts
+  connection: local
+  name: modify storage controller
+  gather_facts: False
+
+# storager_id: ID of the storage resource. Format: RAIDStorage+Controller_ID
+# mode: Working mode of the RAID controller. Available values: RAID, JBOD.
+# Setting the working mode may require restarting the OS to take effect, please check the echo information.
+# Cannot set with JBOD_state at the same time.
+# JBOD_state: Specifies whether to enable the hard disk pass-through function. Available values: True, False.
+# This property can only be set when the working mode of the RAID controller is RAID.
+# Cannot set with mode at the same time.
+
+  tasks:
+  - name: modify storage controller
+    ibmc_modify_storage_controller:
+      ibmc_ip: "{{ ibmc_ip }}"
+      ibmc_user: "{{ ibmc_user }}"
+      ibmc_pswd: "{{ ibmc_pswd }}"
+      storage_controllers:
+       - storage_id: "RAIDStorage0"
+         JBOD_state: True
+       - storage_id: "RAIDStorage1"
+         mode: "JBOD"

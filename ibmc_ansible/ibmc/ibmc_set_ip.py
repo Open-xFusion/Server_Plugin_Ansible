@@ -10,17 +10,6 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-from ansible.module_utils.basic import AnsibleModule
-
-from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
-from ibmc_ansible.ibmc_redfish_api.api_manage_ibmc_ip import set_ibmc_ip
-from ibmc_ansible.ibmc_logger import report
-from ibmc_ansible.ibmc_logger import log
-from ibmc_ansible.utils import is_support_server, set_result, validate_ipv4
-from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import MSG_FORMAT
-from ibmc_ansible.utils import SERVERTYPE
-
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
     'status': ['preview'],
@@ -164,6 +153,17 @@ RETURNS = """
     {"result": True, "msg": "Set iBMC ethernet interface info successful!"}
 """
 
+from ansible.module_utils.basic import AnsibleModule
+
+from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
+from ibmc_ansible.ibmc_redfish_api.api_manage_ibmc_ip import set_ibmc_ip
+from ibmc_ansible.ibmc_logger import report
+from ibmc_ansible.ibmc_logger import log
+from ibmc_ansible.utils import is_support_server, set_result, validate_ipv4
+from ibmc_ansible.utils import ansible_ibmc_run_module
+from ibmc_ansible.utils import MSG_FORMAT
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, LIST
+
 
 def ibmc_set_ip_module(module):
     """
@@ -223,16 +223,16 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "target_bmc_ip": {"required": True, "type": 'str'},
-            "ip_version": {"required": False, "type": 'str'},
-            "ipv4_addr": {"required": False, "type": 'list'},
-            "ipv6_addr": {"required": False, "type": 'list'},
-            "ipv6_gateway": {"required": False, "type": 'str'},
-            "hostname": {"required": False, "type": 'str'},
-            "domain_name": {"required": False, "type": 'str'}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "target_bmc_ip": {REQUIRED: True, TYPE: STR},
+            "ip_version": {REQUIRED: False, TYPE: STR},
+            "ipv4_addr": {REQUIRED: False, TYPE: LIST},
+            "ipv6_addr": {REQUIRED: False, TYPE: LIST},
+            "ipv6_gateway": {REQUIRED: False, TYPE: STR},
+            "hostname": {REQUIRED: False, TYPE: STR},
+            "domain_name": {REQUIRED: False, TYPE: STR}
         },
         supports_check_mode=False)
 

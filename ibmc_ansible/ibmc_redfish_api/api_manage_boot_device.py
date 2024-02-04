@@ -13,6 +13,7 @@
 import requests
 
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 
 BOOT_TARGET_DICT = {
     "cd": "Cd",
@@ -56,7 +57,7 @@ def set_boot_device(ibmc, boot_device_info):
     boot_mode = boot_device_info.get('boot_mode')
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Initialize payload
     boot_payload = {}
@@ -93,7 +94,7 @@ def set_boot_device(ibmc, boot_device_info):
             return ret
 
     # If the input parameter is empty, prompt the user to enter the correct parameter in the yml file
-    if boot_payload == {}:
+    if not boot_payload:
         log_msg = 'The parameter is empty, please enter the correct parameter in the set_boot_device.yml file.'
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
@@ -118,7 +119,7 @@ def set_boot_device_request(ibmc, boot_payload):
     Date: 2019/10/23 21:44
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     payload = {"Boot": boot_payload}
 
     # URL of the system resource
@@ -166,7 +167,7 @@ def get_boot_device(ibmc):
     ibmc.log_info("Start get boot device...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Get iBMC systems resource information
     request_result_json = ibmc.get_systems_resource()
@@ -177,8 +178,8 @@ def get_boot_device(ibmc):
     }
 
     # Update ret
-    ret['result'] = True
-    ret['msg'] = "Get boot device info successful! The boot device info is: %s" % str(result)
+    ret[RESULT] = True
+    ret[MSG] = "Get boot device info successful! The boot device info is: %s" % str(result)
 
     ibmc.log_info("Get boot device info successful!")
     return ret

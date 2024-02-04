@@ -9,11 +9,13 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
+
 import os
 
 from ibmc_ansible.utils import set_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import write_result
+from ibmc_ansible.utils import RESULT, MSG
 
 
 def manage_power(ibmc, command):
@@ -33,7 +35,7 @@ def manage_power(ibmc, command):
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     uri = "%s/Actions/ComputerSystem.Reset" % ibmc.system_uri
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     power_cmd_dict = {
         "poweron": 'On',
         "poweroff": 'ForceOff',
@@ -53,7 +55,7 @@ def manage_power(ibmc, command):
         r = ibmc.request("POST", resource=uri, headers=headers, data=payload)
     except Exception as e:
         ibmc.log_info("set power command exception!  command is:%s  exception is:%s" % (command, str(e)))
-        raise Exception("set power command exception!  command is:%s  exception is:%s" % (command, str(e)))
+        raise e
     try:
         result = r.status_code
         if result == 200:
@@ -64,7 +66,7 @@ def manage_power(ibmc, command):
             set_result(ibmc.log_error, log_msg, False, rets)
     except Exception as e:
         ibmc.log_error("set system %s  parse response exception ! exception is : %s" % (command, str(e)))
-        raise Exception("set system %s parse response exception! exception is : %s" % (command, str(e)))
+        raise e
     return rets
 
 
@@ -84,13 +86,13 @@ def get_power_status(ibmc):
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     uri = ibmc.system_uri
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     payload = {}
     try:
         response = ibmc.request("GET", resource=uri, headers=headers, data=payload)
     except Exception as e:
         ibmc.log_error("send get power state exception; exception is: %s" % (str(e)))
-        raise Exception("send get power state exception; exception is: %s" % (str(e)))
+        raise e
     try:
         if response.status_code == 200:
             data = response.json()
@@ -111,4 +113,4 @@ def get_power_status(ibmc):
                 "get power state failed , error code exception,error code is  %s" % str(response.status_code))
     except Exception as e:
         ibmc.log_error("parse response exception %s" % (str(e)))
-        raise Exception("parse response exception %s" % (str(e)))
+        raise e

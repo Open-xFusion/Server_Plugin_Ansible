@@ -130,7 +130,9 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_redfish_api.api_manage_account import modify_account
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import REQUIRED, TYPE, STR, NO_LOG, set_result, BOOL, LIST
+
+LOCKED = "locked"
 
 
 def ibmc_modify_account_module(module):
@@ -161,12 +163,12 @@ def ibmc_modify_account_module(module):
             body_para["Password"] = module.params.get("new_account_pswd")
         if module.params.get("roleid"):
             body_para["RoleId"] = module.params.get("roleid")
-        if module.params.get("locked") is not None:
-            if module.params["locked"] is not False:
+        if module.params.get(LOCKED) is not None:
+            if module.params[LOCKED] is not False:
                 error_msg = "The locked param can not be set to true"
                 set_result(ibmc.log_error, error_msg, False, ret)
                 return ret
-            body_para["Locked"] = module.params["locked"]
+            body_para[LOCKED] = module.params[LOCKED]
         if module.params.get("enable") is not None:
             body_para["Enabled"] = module.params["enable"]
         if module.params.get("account_insecure_prompt_enabled") is not None:
@@ -243,18 +245,18 @@ def new_information(ibmc, module, oem_dic):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "old_account_user": {"required": True, "type": 'str'},
-            "new_account_user": {"required": False, "type": 'str'},
-            "new_account_pswd": {"required": False, "type": 'str', "no_log": True},
-            "roleid": {"required": False, "type": 'str'},
-            "locked": {"required": False, "type": 'bool'},
-            "enable": {"required": False, "type": 'bool'},
-            "account_insecure_prompt_enabled": {"required": False, "type": 'bool'},
-            "login_interface": {"required": False, "type": 'list'},
-            "login_rule": {"required": False, "type": 'list'},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "old_account_user": {REQUIRED: True, TYPE: STR},
+            "new_account_user": {REQUIRED: False, TYPE: STR},
+            "new_account_pswd": {REQUIRED: False, TYPE: STR, NO_LOG: True},
+            "roleid": {REQUIRED: False, TYPE: STR},
+            "locked": {REQUIRED: False, TYPE: BOOL},
+            "enable": {REQUIRED: False, TYPE: BOOL},
+            "account_insecure_prompt_enabled": {REQUIRED: False, TYPE: BOOL},
+            "login_interface": {REQUIRED: False, TYPE: LIST},
+            "login_rule": {REQUIRED: False, TYPE: LIST},
 
         },
         supports_check_mode=False)

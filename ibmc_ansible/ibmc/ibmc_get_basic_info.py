@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = r'''
 ---
@@ -64,6 +66,7 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_redfish_api.api_basic_info import get_basic_info
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
+from ibmc_ansible.utils import REQUIRED, TYPE, STR, NO_LOG, BOOL
 from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
@@ -91,10 +94,10 @@ def ibmc_get_basic_info(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "csv_format": {"required": False, "type": 'bool'}
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "csv_format": {REQUIRED: False, TYPE: BOOL}
         },
         supports_check_mode=False)
     ansible_ibmc_run_module(ibmc_get_basic_info, module, log, report)

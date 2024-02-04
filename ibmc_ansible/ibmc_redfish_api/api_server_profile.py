@@ -15,6 +15,7 @@ import os
 from ibmc_ansible.ibmc_redfish_api.api_manage_file import upload_file, \
     download_file_request
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 from ibmc_ansible.ibmc_redfish_api.common_api import wait_task
 
 # Max waiting time
@@ -34,11 +35,11 @@ def import_profile(ibmc, file_path, local):
             "result": True or False
             "msg": description for success or failure
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     save_path, file_name = os.path.split(file_path)
     if local:
         upload_file_ret = upload_file(ibmc, file_path)
-        if upload_file_ret.get('result'):
+        if upload_file_ret.get(RESULT):
             file_path = os.path.join("/tmp/web", file_name)
         else:
             return upload_file_ret
@@ -62,8 +63,8 @@ def import_profile(ibmc, file_path, local):
     request_code = request_result.status_code
     request_json = request_result.json()
     if request_code == 202:
-        ret['result'] = True
-        ret['msg'] = request_result.json()
+        ret[RESULT] = True
+        ret[MSG] = request_result.json()
     else:
         log_error = "Import server profile failed, The status code is %s. " \
                     "The error info is: %s." % (request_code, str(request_json))
@@ -85,7 +86,7 @@ def export_profile(ibmc, file_path, local):
             "result": True or False
             "msg": description for success or failure
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     save_path, file_name = os.path.split(file_path)
     if local:
         file_path = os.path.join("/tmp/web", file_name)
@@ -112,8 +113,8 @@ def export_profile(ibmc, file_path, local):
                     "The error info is %s" % (request_code, str(request_json))
         set_result(ibmc.log_error, log_error, False, ret)
     else:
-        ret['result'] = True
-        ret['msg'] = request_json
+        ret[RESULT] = True
+        ret[MSG] = request_json
 
     return ret
 
@@ -132,7 +133,7 @@ def server_profile(ibmc, file_path, command, local):
             "result": True or False
             "msg": description for success or failure
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     save_path, file_name = os.path.split(file_path)
 
     # Select Import or Export.
@@ -145,20 +146,20 @@ def server_profile(ibmc, file_path, command, local):
         set_result(ibmc.log_error, log_msg, False, ret)
         return ret
 
-    if not request_ret.get('result'):
+    if not request_ret.get(RESULT):
         return request_ret
 
-    data = request_ret.get('msg')
+    data = request_ret.get(MSG)
     task_info = "%s: %s" % (command, file_name)
     task_id = data.get('Id')
     transfer_result = wait_task(ibmc, task_id, task_info, WAIT_TASK_TIME)
-    if not transfer_result.get('result') or \
+    if not transfer_result.get(RESULT) or \
             command.upper() == "IMPORT" or not local:
         return transfer_result
 
     download_result = download_file_request(ibmc, file_name, file_path, file_type="profile")
-    if not download_result.get('result'):
-        log_error = "Export profile failed! The error info is %s" % download_result.get("msg")
+    if not download_result.get(RESULT):
+        log_error = "Export profile failed! The error info is %s" % download_result.get(MSG)
         set_result(ibmc.log_error, log_error, False, ret)
     else:
         log_info = "Export profile successful! Profile have been saved as %s" % file_path

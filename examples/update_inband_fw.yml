@@ -4,6 +4,12 @@
   name: update inband fw
   gather_facts: False
 
+# image_url: specifies the path of the upgrade file.
+# It is in the File transfer protocol://User name:Password@Server IP address/Directory/File name format.
+# The file transfer protocols SFTP, HTTPS, NFS, CIFS, and SCP are supported.
+# Before the upgrade, ensure that the firmware upgrade package and the digital signature
+# file have been uploaded to the corresponding directory on the file server.
+
   tasks:
   - name:  update inband fw
     ibmc_inband_fw_update:

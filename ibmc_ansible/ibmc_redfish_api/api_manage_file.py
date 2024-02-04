@@ -17,6 +17,7 @@ from requests_toolbelt import MultipartEncoder
 
 from ibmc_ansible.utils import set_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import RESULT, MSG
 
 TIME_OUT = 30
 
@@ -39,7 +40,7 @@ def upload_file(ibmc, file):
     ibmc.log_info("Start to upload the files...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     if not os.path.isfile(file):
         log_error = "Upload file failed! The file %s is incorrect, " \
                     "please reset it." % file
@@ -95,7 +96,7 @@ def download_file(ibmc, bmc_file, local_path=None, change_name=True):
     """
     ibmc.log_info("Start to download the files...")
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Verify the bmc_file
     if not isinstance(bmc_file, str):
@@ -106,11 +107,11 @@ def download_file(ibmc, bmc_file, local_path=None, change_name=True):
 
     # Verify the local_path
     verify_result = verify_file_path(ibmc, local_path)
-    if not verify_result.get('result'):
+    if not verify_result.get(RESULT):
         return verify_result
 
     # Set the file name.
-    local_path = verify_result.get('msg')
+    local_path = verify_result.get(MSG)
     if change_name:
         date_str = time.strftime("%Y%m%d%H%M%S", time.localtime())
         file_name = '%s_%s_%s' % (str(ibmc.ip), date_str, bmc_file)
@@ -120,7 +121,7 @@ def download_file(ibmc, bmc_file, local_path=None, change_name=True):
 
     # Obtaining the download result
     request_result = download_file_request(ibmc, bmc_file, local_file_name)
-    if not request_result.get('result'):
+    if not request_result.get(RESULT):
         return request_result
 
     log_msg = "Download file successfully! File saved to %s." % local_file_name
@@ -144,7 +145,7 @@ def verify_file_path(ibmc, local_path=None):
     Date: 2021/2/22 21:13
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Setting the default save path
     if not local_path:
@@ -159,7 +160,7 @@ def verify_file_path(ibmc, local_path=None):
         set_result(ibmc.log_error, log_error, False, ret)
         return ret
 
-    ret['msg'] = local_path
+    ret[MSG] = local_path
     return ret
 
 
@@ -181,7 +182,7 @@ def download_file_request(ibmc, bmc_file, local_file_name, file_type=None):
     Date: 2021/2/22 21:13
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Initialize request information.
     file_path = "/tmp/web/%s" % bmc_file

@@ -12,12 +12,14 @@
 
 import os
 import time
+from collections import namedtuple
 
 from ibmc_ansible.ibmc_redfish_api.api_power_manager import get_power_status
 from ibmc_ansible.ibmc_redfish_api.api_power_manager import manage_power
 from ibmc_ansible.utils import set_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import write_result
+from ibmc_ansible.utils import RESULT, MSG
 
 CHECK_INTERVAL = 6
 WAIT_TRANFILE_TIME = 20
@@ -31,6 +33,15 @@ SP_STATUS_OPERABLE = "SPIsOperable"
 SP_STATUS_WORKING = "SPIsWorking"
 WAIT_SP_START_TIME = 300
 BMC_EXPECT_VERSION = "3.20"
+FW_INFO = "fwInfo"
+CONTROLLERS = "Controllers"
+
+SetFwUpgradeArgument = namedtuple("SET_FW_UPGRADE_ARGUMENT",
+                                  [
+                                         "image_type", "parameter", "upgrade_mode", "active_method", "upgrade_id"
+                                     ]
+                                  )
+SetFwUpgradeArgument.__new__.__defaults__ = ("Firmware", "all", "Auto", "Restart", "1")
 
 
 def sp_api_get_status(ibmc):
@@ -52,6 +63,7 @@ def sp_api_get_status(ibmc):
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {}
     oem_info = ibmc.oem_info
+    sp_status = None
     try:
         r = ibmc.request('GET', resource=uri, headers=headers, data=payload)
         result = r.status_code
@@ -61,10 +73,10 @@ def sp_api_get_status(ibmc):
             return r.json()["Oem"][oem_info]["SPStatus"]
         else:
             ibmc.log_error("get sp status error; code is: %s" % result)
-            return None
     except Exception as e:
         ibmc.log_error("get sp status exception; exception is: %s" % str(e))
         raise
+    return sp_status
 
 
 def sp_api_set_sp_service(ibmc, sp_enable, restart_timeout=30,
@@ -88,15 +100,14 @@ def sp_api_set_sp_service(ibmc, sp_enable, restart_timeout=30,
     uri = "%s/SPService" % ibmc.manager_uri
     etag = ibmc.get_etag(uri)
     token = ibmc.get_token()
-    headers = {'content-type': 'application/json', 'X-Auth-Token': token,
-               'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
     playload = {
         "SPStartEnabled": sp_enable,
         "SysRestartDelaySeconds": restart_timeout,
         "SPTimeout": deploy_timeout,
         "SPFinished": deploy_status
     }
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     try:
         r = ibmc.request('PATCH', resource=uri, headers=headers, data=playload,
                          tmout=10)
@@ -113,9 +124,7 @@ def sp_api_set_sp_service(ibmc, sp_enable, restart_timeout=30,
     return ret
 
 
-def sp_api_set_fw_upgrade(ibmc, image_url, signal_url, image_type="Firmware",
-                          parameter="all", upgrade_mode="Auto",
-                          active_method="Restart", upgrade_id="1"):
+def sp_api_set_fw_upgrade(ibmc, image_url, signal_url, argument):
     """
     Function:
         sp api get fw upgrade
@@ -123,7 +132,7 @@ def sp_api_set_fw_upgrade(ibmc, image_url, signal_url, image_type="Firmware",
         ibmc : Class that contains basic information about iBMC
         image_url : Image URI
         signal_url : Signal URI
-        image_type : image type
+        argument : SetFwUpgradeArgument
     Returns:
         ret : Task result
             "result": True or False
@@ -131,28 +140,31 @@ def sp_api_set_fw_upgrade(ibmc, image_url, signal_url, image_type="Firmware",
     Raises:
          None
     Date: 2019/10/12 17:21
+    Modify records:
+        2023/10/10 Encapsulate the arguments ImageType, Parameter, UpgradeMode, ActiveMethod,
+        and upgrade_id into SET_FW_UPGRADE_ARGUMENT through namedtuple
     """
     uri = "%s/SPService/SPFWUpdate/%s/Actions/SPFWUpdate.SimpleUpdate" \
-          % (ibmc.manager_uri, upgrade_id)
+          % (ibmc.manager_uri, argument.upgrade_id)
     token = ibmc.get_token()
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     playload = {
         "ImageURI": image_url,
         "SignalURI": signal_url,
-        "ImageType": image_type,
-        "Parameter": parameter,
-        "UpgradeMode": upgrade_mode,
-        "ActiveMethod": active_method
+        "ImageType": argument.image_type,
+        "Parameter": argument.parameter,
+        "UpgradeMode": argument.upgrade_mode,
+        "ActiveMethod": argument.active_method
     }
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     try:
         r = ibmc.request('POST', resource=uri, headers=headers, data=playload,
                          tmout=10)
         result = r.status_code
         if result == 200:
             ibmc.log_info("sp api set fw upgrade successful!\n")
-            ret['result'] = True
-            ret['msg'] = 'successful!'
+            ret[RESULT] = True
+            ret[MSG] = 'successful!'
         else:
             log_msg = "set sp_api_set_fw_upgrade error info is: %s \n" % str(
                 r.json())
@@ -177,7 +189,7 @@ def sp_api_get_fw_info(ibmc):
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': False, 'msg': '', "fwInfo": []}
+    ret = {RESULT: False, MSG: '', FW_INFO: []}
     uri = "%s/SPService/DeviceInfo" % ibmc.manager_uri
     token = ibmc.get_token()
     headers = {'X-Auth-Token': token}
@@ -191,11 +203,11 @@ def sp_api_get_fw_info(ibmc):
             set_result(ibmc.log_error, log_msg, False, ret)
             return ret
         ibmc.log_info("get FwInfo successful!\n")
-        ret['result'] = True
-        ret['msg'] = 'successful!'
+        ret[RESULT] = True
+        ret[MSG] = 'successful!'
         # PCIeCards is empty or do not has the key PCIeCards should raise
         if r.json().get("PCIeCards"):
-            ret["fwInfo"] = r.json().get("PCIeCards")
+            ret[FW_INFO] = r.json().get("PCIeCards")
         else:
             msg = "get FWInfo failed! do not has keys PCIeCards or PCIeCards is empty; " \
                   "Maybe you should start sp once"
@@ -222,7 +234,7 @@ def sp_api_get_fw_update_id(ibmc):
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': False, 'msg': '', "updateidlist": []}
+    ret = {RESULT: False, MSG: '', "updateidlist": []}
     uri = "%s/SPService/SPFWUpdate" % ibmc.manager_uri
     token = ibmc.get_token()
     headers = {'X-Auth-Token': token}
@@ -233,8 +245,8 @@ def sp_api_get_fw_update_id(ibmc):
         result = r.status_code
         if result == 200:
             ibmc.log_info("sp api get fw updateId successful!")
-            ret['result'] = True
-            ret['msg'] = 'successful!'
+            ret[RESULT] = True
+            ret[MSG] = 'successful!'
             tmpdic = r.json()
             ret["updateidlist"] = range(len(tmpdic["Members"]))
         else:
@@ -262,7 +274,7 @@ def sp_api_get_fw_source(ibmc, upgrade_id="1"):
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': False, 'msg': '', "SourceInfo": {}}
+    ret = {RESULT: False, MSG: '', "SourceInfo": {}}
     uri = "%s/SPService/SPFWUpdate/%s" % (ibmc.manager_uri, upgrade_id)
     token = ibmc.get_token()
     headers = {'X-Auth-Token': token}
@@ -273,8 +285,8 @@ def sp_api_get_fw_source(ibmc, upgrade_id="1"):
         result = r.status_code
         if result == 200:
             ibmc.log_info("sp api get fw source successful!")
-            ret['result'] = True
-            ret['msg'] = 'successful!'
+            ret[RESULT] = True
+            ret[MSG] = 'successful!'
             ret["SourceInfo"].update(r.json())
         else:
             log_msg = "set sp api get fw source error info is: %s " % str(
@@ -300,7 +312,7 @@ def sp_api_get_result_id(ibmc):
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': False, 'msg': '', "resultIdlist": []}
+    ret = {RESULT: False, MSG: '', "resultIdlist": []}
     uri = "%s/SPService/SPResult" % ibmc.manager_uri
     token = ibmc.get_token()
     headers = {'X-Auth-Token': token}
@@ -312,8 +324,8 @@ def sp_api_get_result_id(ibmc):
         if result == 200:
             ibmc.log_info("sp_api_get_fw_source successful!")
             tmp_dic = r.json()
-            ret['result'] = True
-            ret['msg'] = 'successful!'
+            ret[RESULT] = True
+            ret[MSG] = 'successful!'
             ret["resultIdlist"] = range(len(tmp_dic["Members"]))
         else:
             log_msg = "set sp_api_get_result_id error info is: %s " % str(
@@ -340,7 +352,7 @@ def sp_api_get_result_info(ibmc, result_id="1"):
          None
     Date: 2019/10/12 17:21
     """
-    ret = {'result': False, 'msg': '', "resultInfo": {}}
+    ret = {RESULT: False, MSG: '', "resultInfo": {}}
     uri = "%s/SPService/SPResult/%s" % (ibmc.manager_uri, result_id)
     token = ibmc.get_token()
     headers = {'X-Auth-Token': token}
@@ -351,8 +363,8 @@ def sp_api_get_result_info(ibmc, result_id="1"):
         result = r.status_code
         if result == 200:
             ibmc.log_info("sp api get result info successful!")
-            ret['result'] = True
-            ret['msg'] = 'successful!'
+            ret[RESULT] = True
+            ret[MSG] = 'successful!'
             ret["resultInfo"].update(r.json())
         else:
             log_msg = "set sp api get result info error info is: %s \n" % str(
@@ -399,30 +411,29 @@ def sp_upgrade_fw_process(ibmc, config_list):
     Date: 2019/10/12 17:21
     """
     # Check the BMC version
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     upgrade_id = "1"
 
     ret = check_status(ibmc)
-    if ret['result'] is False:
+    if ret.get(RESULT) is False:
         return ret
 
     ret = sp_api_get_fw_update_id(ibmc)
     try:
-        if ret['result'] is not True:
+        if ret.get(RESULT) is not True:
             log_msg = "Get Fw Update Id failed! result is not true"
             set_result(ibmc.log_error, log_msg, False, rets)
             return rets
         ibmc.log_info("GetFwUpdateId  successfully!")
-        if ret["updateidlist"] != [] or ret["updateidlist"] is not None:
-            upgrade_id = str(ret["updateidlist"][0] + 1)
+        if ret.get("updateidlist"):
+            upgrade_id = str(ret.get("updateidlist")[0] + 1)
         else:
             log_msg = "Get Fw Update Id failed!  updateidlist is none"
             set_result(ibmc.log_error, log_msg, False, rets)
             return rets
     except Exception as e:
-        msg = "parse fw upgrade_id exception :%s" % str(e)
-        ibmc.log_error(msg)
-        raise Exception(msg)
+        ibmc.log_error("parse fw upgrade_id exception :%s" % str(e))
+        raise e
 
     if not config_list:
         log_msg = "get config failed!"
@@ -435,13 +446,13 @@ def sp_upgrade_fw_process(ibmc, config_list):
         return rets
 
     ret = prepare_update(ibmc)
-    if ret.get('result') is not True:
+    if ret.get(RESULT) is not True:
         return ret
 
     # check if fw upgrade ok
-    for i in range(len(config_list) * WATT_UPGRADE_RES):
+    for _ in range(len(config_list) * WATT_UPGRADE_RES):
         fw_check = check_fw_upgrade(ibmc, upgrade_id, config_list, result_dic)
-        if fw_check.get('result') is not None:
+        if fw_check.get(RESULT) is not None:
             return fw_check
         else:
             result_dic = fw_check
@@ -465,15 +476,15 @@ def prepare_update(ibmc):
          None
     Date: 2019/10/12 17:21
     """
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     # start sp to upgrade
     ret = sp_api_set_sp_service(ibmc, sp_enable=True)
-    if ret['result'] is True:
+    if ret.get(RESULT) is True:
         ibmc.log_info("set sp_service successfully!")
     else:
         time.sleep(CHECK_INTERVAL)
         ret = sp_api_set_sp_service(ibmc, sp_enable=True)
-        if ret['result'] is True:
+        if ret.get(RESULT) is True:
             ibmc.log_info("set sp service again successfully!")
         else:
             log_msg = "set sp service again failed!"
@@ -481,7 +492,7 @@ def prepare_update(ibmc):
             return rets
     # power on
     ret = manage_power(ibmc, "PowerOn")
-    if ret['result'] is True:
+    if ret.get(RESULT) is True:
         ibmc.log_info("power on system successfully!")
     else:
         log_msg = "power on  system failed!"
@@ -489,7 +500,7 @@ def prepare_update(ibmc):
         return rets
 
     ret = wait_sp_start(ibmc)
-    if ret['result'] is False:
+    if ret.get(RESULT) is False:
         return ret
     return rets
 
@@ -520,8 +531,8 @@ def get_upgrade_result(ibmc, config_list, upgrade_id):
         tmp_filename = get_file_name(each_items)
         result_dic[tmp_filename] = "inited"
         ret = sp_api_set_fw_upgrade(ibmc, fw_file_uri, fw_signal_uri,
-                                    upgrade_id=upgrade_id)
-        if ret['result'] is True:
+                                    SetFwUpgradeArgument(upgrade_id=upgrade_id))
+        if ret.get(RESULT) is True:
             ibmc.log_info("set fw upgrade  successfully!")
         else:
             result_dic[tmp_filename] = "failed"
@@ -532,19 +543,24 @@ def get_upgrade_result(ibmc, config_list, upgrade_id):
         # check files has transfer to bmc
         filename = get_file_name(each_items)
         asc_file = filename + ".asc"
-        for i in range(WAIT_TRANFILE_TIME):
+        cnt = -1
+        for _ in range(WAIT_TRANFILE_TIME):
+            cnt = cnt + 1
             time.sleep(CHECK_INTERVAL)
             ret = sp_api_get_fw_source(ibmc, upgrade_id=upgrade_id)
-            if ret['result'] is not True:
+            if ret.get(RESULT) is not True:
                 continue
-            filelist = ret["SourceInfo"]["FileList"]
-            if filelist == [] or filelist is None:
+            source_info = ret.get("SourceInfo")
+            if not source_info:
+                continue
+            filelist = source_info.get("FileList")
+            if not filelist:
                 continue
             if (filename in filelist) and (asc_file in filelist):
                 ibmc.log_info("get fw source successfully!")
                 break
 
-        if i == (WAIT_TRANFILE_TIME - 1):
+        if cnt == (WAIT_TRANFILE_TIME - 1):
             result_dic[tmp_filename] = "failed"
             time_out_log(ibmc, asc_file, filelist, filename)
     return result_dic
@@ -564,7 +580,7 @@ def wait_sp_start(ibmc):
         None
     Date: 2019/10/12 17:21
     """
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     # wait sp start and keep connect
     # wait sp start  30 min time out
     for cnt in range(WAIT_SP_START_TIME):
@@ -597,7 +613,7 @@ def check_fw_upgrade(ibmc, upgrade_id, config_list, result_dic):
          Set SNMP trap resource properties failed!
     Date: 2019/10/12 17:21
     """
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     time.sleep(CHECK_INTERVAL)
     try:
         ret = sp_api_get_result_info(ibmc, result_id=upgrade_id)
@@ -605,8 +621,8 @@ def check_fw_upgrade(ibmc, upgrade_id, config_list, result_dic):
         ibmc.log_error("get upgrade result exception %s" % str(e))
         return result_dic
 
-    if ret['result'] is not True:
-        ibmc.log_error("sp_api_get_result_info failed! %s" % (ret['msg']))
+    if ret.get(RESULT) is not True:
+        ibmc.log_error("sp_api_get_result_info failed! %s" % (ret.get(MSG)))
         return result_dic
 
     try:
@@ -628,8 +644,11 @@ def check_fw_upgrade(ibmc, upgrade_id, config_list, result_dic):
                 ibmc.log_error(msg)
                 ibmc.report_error(msg)
                 break
+    except KeyError as e:
+        ibmc.log_error("parse upgrade result exception key %s dose not exist" % str(e))
+        return result_dic
     except Exception as e:
-        ibmc.log_info("%s parse upgrade result exception" % str(e))
+        ibmc.log_error("%s parse upgrade result exception" % str(e))
         return result_dic
 
     # result is ok
@@ -688,7 +707,7 @@ def check_status(ibmc):
         None
     Date: 2019/10/12 17:21
     """
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     r = ibmc.check_ibmc_version(BMC_EXPECT_VERSION)
     if r is False:
         log_msg = "ibmc version must be %s or above" % BMC_EXPECT_VERSION
@@ -696,7 +715,7 @@ def check_status(ibmc):
         return rets
 
     ret = manage_power(ibmc, "PowerOff")
-    if ret['result'] is True:
+    if ret.get(RESULT) is True:
         ibmc.log_info("ForceOff system successfully!")
     else:
         log_msg = "ForceOff  system failed!"
@@ -706,7 +725,7 @@ def check_status(ibmc):
     for cnt_times in range(WAIT_POWEROFF):
         time.sleep(1)
         ret = get_power_status(ibmc)
-        if "off" in ret['msg'].lower():
+        if ret.get(MSG) and "off" in ret.get(MSG).lower():
             break
         if cnt_times == WAIT_POWEROFF - 1:
             ibmc.log_error("power state is still on after 120 s")
@@ -740,7 +759,7 @@ def get_fw_info(ibmc):
         parse fw Info exception
     Date: 10/19/2019
     """
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     # Check the BMC version
     r = ibmc.check_ibmc_version(BMC_EXPECT_VERSION)
     if r is False:
@@ -763,27 +782,27 @@ def get_fw_info(ibmc):
         return rets
 
     ret = sp_api_get_fw_info(ibmc)
-    if ret["result"] is not True:
+    if ret.get(RESULT) is not True:
         log_msg = "get fwInfo failed"
         set_result(ibmc.log_error, log_msg, False, rets)
         return rets
-    if ret["fwInfo"] == [] or ret["fwInfo"] is None:
+    if not ret.get(FW_INFO):
         log_msg = "get fwInfo failed "
         set_result(ibmc.log_error, log_msg, False, rets)
         return rets
     msg = 'get fw info successfully msg:\n=============================================== \n'
     try:
-        for eachFw in ret["fwInfo"]:
-            msg = "%sDeviceName:%s \n" % (msg, eachFw["DeviceName"])
+        for each_fw in ret.get(FW_INFO):
+            msg = "%sDeviceName:%s \n" % (msg, each_fw["DeviceName"])
             msg = "%sManufacturer:%s \n" \
-                  % (msg, eachFw["Controllers"][0]["Manufacturer"])
-            msg = "%sModel:%s \n" % (msg, eachFw["Controllers"][0]["Model"])
+                  % (msg, each_fw[CONTROLLERS][0]["Manufacturer"])
+            msg = "%sModel:%s \n" % (msg, each_fw[CONTROLLERS][0]["Model"])
             msg = "%sFirmwareVersion:%s \n" \
-                  % (msg, eachFw["Controllers"][0]["FirmwareVersion"])
+                  % (msg, each_fw[CONTROLLERS][0]["FirmwareVersion"])
             msg = "%s=============================================== \n" % msg
     except Exception as err:
         ibmc.log_error("parse fw Info exception : %s" % str(err))
-    fw_info_dic = {"fwinfo": ret["fwInfo"]}
+    fw_info_dic = {"fwinfo": ret.get(FW_INFO)}
     filename = os.path.join(IBMC_REPORT_PATH,
                             "inband_fw_info/%s_fwInfo.json" % str(ibmc.ip))
     write_result(ibmc, filename, fw_info_dic)

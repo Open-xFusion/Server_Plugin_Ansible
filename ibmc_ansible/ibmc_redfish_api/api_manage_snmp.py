@@ -16,6 +16,7 @@ import requests
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
 from ibmc_ansible.utils import set_result
+from ibmc_ansible.utils import RESULT, MSG
 from ibmc_ansible.ibmc_redfish_api.api_manage_account import get_account_id
 
 TRAP_VERSION_DICT = {
@@ -69,90 +70,81 @@ def set_snmp_trap(ibmc, snmp_info):
     """
     ibmc.log_info("Start set SNMP trap resource properties...")
 
+    # Initialize payload
+    trap_payload = {}
+    ret = initialize_payload(ibmc, snmp_info, trap_payload)
+    if not ret.get(RESULT):
+        set_result(ibmc.log_error, ret.get(MSG), False, ret)
+        return ret
+
+    # If the input parameter is empty, prompt the user to enter the correct parameter in the yml file
+    if not trap_payload:
+        log_msg = 'The parameter is empty, please enter the correct parameter in the set_snmp_trap.yml file.'
+        set_result(ibmc.log_error, log_msg, False, ret)
+        return ret
+
+    return set_snmp_trap_request(ibmc, trap_payload)
+
+
+def initialize_payload(ibmc, snmp_info, trap_payload):
+    ret = {RESULT: False, MSG: ''}
     # Obtain user-configured SNMP trap information
     community = snmp_info.get('community')
     service_enabled = snmp_info.get('service_enabled')
-    trap_version = snmp_info.get('trap_version')
     trap_v3_user = snmp_info.get('trap_v3_user')
     trap_server_list = snmp_info.get('trap_servers')
-
-    # Initialize return information
-    ret = {'result': True, 'msg': ''}
-
-    # Initialize payload
-    trap_payload = {}
-
     # Whether trap is enabled, The optional parameters are: true or false
     if service_enabled is not None:
-        if service_enabled is True:
-            trap_payload["ServiceEnabled"] = True
-        elif service_enabled is False:
-            trap_payload["ServiceEnabled"] = False
+        if isinstance(service_enabled, bool):
+            trap_payload["ServiceEnabled"] = service_enabled
         else:
-            log_msg = 'The service enabled is incorrect, It should be True or False'
-            set_result(ibmc.log_error, log_msg, False, ret)
+            ret[MSG] = 'The service enabled is incorrect, It should be True or False'
             return ret
-
-    # SNMPv3 user name, valid only for trap version is V3
+    # SNMPv3 username, valid only for trap version is V3
     if trap_v3_user is not None:
         # Verify trap v3 user name
         account_id = get_account_id(ibmc, trap_v3_user)
         if account_id is None:
-            log_msg = "The trap v3 username: %s does not exist" % trap_v3_user
-            set_result(ibmc.log_error, log_msg, False, ret)
+            ret[MSG] = "The trap v3 username: %s does not exist" % trap_v3_user
             return ret
-
         trap_payload["TrapV3User"] = trap_v3_user
-
     # Trap mode, The optional parameters are: "OID", "EventCode" or "PreciseAlarm"
     # 1.It is not allowed to set the community when TrapVersion is V3
     # 2.The CommunityName cannot contain spaces
     # 3.The length of the community name is 1-18.
     if community is not None:
-        community_res = check_community(ibmc, trap_version, community)
-        if community_res.get("result") is False:
+        community_res = check_community(ibmc, snmp_info.get('trap_version'), community)
+        if community_res.get(RESULT) is False:
             return community_res
-
         trap_payload["CommunityName"] = community
-
-    items = (('trap_version', "TrapVersion", TRAP_VERSION_DICT),
-             ('trap_mode', "TrapMode", TRAP_MODE_DICT),
-             ('trap_server_identity', "TrapServerIdentity", HOST_IDENTITY_DICT),
-             ('alarm_severity', "AlarmSeverity", ALARM_SEVERITY_DICT))
+    items = (
+        ('trap_version', "TrapVersion", TRAP_VERSION_DICT),
+        ('trap_mode', "TrapMode", TRAP_MODE_DICT),
+        ('trap_server_identity', "TrapServerIdentity", HOST_IDENTITY_DICT),
+        ('alarm_severity', "AlarmSeverity", ALARM_SEVERITY_DICT)
+    )
     for item, item_name, item_dict in items:
         check_result = check_item(ibmc, snmp_info, item, item_dict)
         if isinstance(check_result, dict):
-            if check_result.get("result") is False:
+            if check_result.get(RESULT) is False:
                 return check_result
         else:
             trap_payload[item_name] = check_result
-
     # Trap Server, supports setting the server enable status (true, false),
     # server address (IPv4, IPv6, and domain name), and server port (1-65535)
     if trap_server_list is not None:
         if not isinstance(trap_server_list, list):
-            log_msg = 'The trap servers format is incorrect, please set it in the set_snmp_trap.yml file'
-            set_result(ibmc.log_error, log_msg, False, ret)
+            ret[MSG] = 'The trap servers format is incorrect, please set it in the set_snmp_trap.yml file'
             return ret
-
         server_list = []
         for trap_server in trap_server_list:
             server_dict = get_server_dict(ibmc, trap_server)
-            if server_dict.get("result") is not None:
+            if server_dict.get(RESULT) is not None:
                 return server_dict
-
             # Store Trap server information in an array in order
             server_list.append(server_dict)
-
         trap_payload["TrapServer"] = server_list
-
-    # If the input parameter is empty, prompt the user to enter the correct parameter in the yml file
-    if trap_payload == {}:
-        log_msg = 'The parameter is empty, please enter the correct parameter in the set_snmp_trap.yml file.'
-        set_result(ibmc.log_error, log_msg, False, ret)
-        return ret
-
-    ret = set_snmp_trap_request(ibmc, trap_payload)
+    ret[RESULT] = True
     return ret
 
 
@@ -173,7 +165,7 @@ def check_item(ibmc, snmp_info, item, item_dict):
          Set SNMP trap resource properties failed!
     Date: 2019/10/12 17:21
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     item_value = snmp_info.get(item)
     if item_value:
         item_value = item_dict.get(str(item_value).lower())
@@ -201,17 +193,16 @@ def set_snmp_trap_request(ibmc, trap_payload):
          Set SNMP trap resource properties failed!
     Date: 2019/10/12 17:21
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     payload = {"SnmpTrapNotification": trap_payload}
     # URL of the SNMP service
-    url = ibmc.manager_uri + "/SnmpService"
+    url = "%s/SnmpService" % ibmc.manager_uri
     # Obtain token
     token = ibmc.bmc_token
     # Obtain etag
     etag = ibmc.get_etag(url)
     # Initialize headers
-    headers = {'content-type': 'application/json', 'X-Auth-Token': token,
-               'If-Match': etag}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token, 'If-Match': etag}
     try:
         # Modify SNMP trap resource properties by PATCH method
         request_result = ibmc.request('PATCH', resource=url, headers=headers,
@@ -250,7 +241,7 @@ def get_server_dict(ibmc, trap_server):
     Date: 2019/10/12 17:21
     """
     server_dict = {}
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     if trap_server:
         trap_server_enabled = trap_server.get("trap_server_enabled")
         trap_server_address = trap_server.get("trap_server_address")
@@ -282,15 +273,14 @@ def get_server_dict(ibmc, trap_server):
                 return ret
             if trap_server_port < MIN_PORT or trap_server_port > MAX_PORT:
                 log_msg = 'The TrapServer/Port is incorrect, It should be a integer from %s to %s' % \
-                            (str(MIN_PORT), str(MAX_PORT))
+                          (str(MIN_PORT), str(MAX_PORT))
                 set_result(ibmc.log_error, log_msg, False, ret)
                 return ret
             else:
                 server_dict["TrapServerPort"] = trap_server_port
         except ValueError as e:
-            log_msg = 'The TrapServer/Port is illegal! The error info is: %s \n' % str(e)
-            ibmc.log_error(log_msg)
-            raise ValueError(log_msg)
+            ibmc.log_error('The TrapServer/Port is illegal! The error info is: %s \n' % str(e))
+            raise e
     return server_dict
 
 
@@ -310,7 +300,7 @@ def check_community(ibmc, trap_version, community):
          Set SNMP trap resource properties failed!
     Date: 2019/10/12 17:21
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     try:
         if trap_version == "V3":
             log_msg = 'It is not allowed to set the community name when trap version is V3.'
@@ -329,7 +319,7 @@ def check_community(ibmc, trap_version, community):
         ibmc.log_error(
             'The community name is illegal! The error info is: %s \n' % str(e))
         raise ValueError(
-            'The community name is illegal! The error info is: %s' % str(e))
+            'The community name is illegal! The error info is: %s' % str(e)) from e
 
     return ret
 
@@ -352,7 +342,7 @@ def get_snmp_trap(ibmc):
     ibmc.log_info("Start get SNMP trap resource info...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # File to save SNMP trap resource information
     file_name = os.path.join(IBMC_REPORT_PATH, "snmp_trap", str(ibmc.ip) + "_SNMPTrapInfo.json")
@@ -367,8 +357,8 @@ def get_snmp_trap(ibmc):
     write_result(ibmc, file_name, result)
 
     # Update ret
-    ret['result'] = True
-    ret['msg'] = "Get SNMP trap resource info successful! " \
+    ret[RESULT] = True
+    ret[MSG] = "Get SNMP trap resource info successful! " \
                  "For more detail information please refer to %s" % file_name
 
     ibmc.log_info("Get SNMP trap resource info successful!")
@@ -391,7 +381,7 @@ def get_snmp_request(ibmc):
     token = ibmc.bmc_token
 
     # URL of the SNMP service
-    url = ibmc.manager_uri + "/SnmpService"
+    url = "%s/SnmpService" % ibmc.manager_uri
 
     # Initialize headers
     headers = {'content-type': 'application/json', 'X-Auth-Token': token}

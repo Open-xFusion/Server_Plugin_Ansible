@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = """
 module: ibmc_inband_fw_update
@@ -74,9 +76,9 @@ from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_redfish_api.api_inband_fw_update import sp_upgrade_fw_process
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
-from ibmc_ansible.utils import is_support_server
+from ibmc_ansible.utils import is_support_server, remote_file_path
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, LIST
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE, remote_file_path
 
 
 def ibmc_inband_fw_update_module(module):
@@ -98,7 +100,7 @@ def ibmc_inband_fw_update_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             file_path_list = []
             for each_item in module.params["image_url"]:
                 file_path = remote_file_path(each_item, module)
@@ -110,12 +112,12 @@ def ibmc_inband_fw_update_module(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "image_url": {"required": True, "type": 'list'},
-            "file_server_user": {"required": False, "type": 'str'},
-            "file_server_pswd": {"required": False, "type": 'str', "no_log": True},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "image_url": {REQUIRED: True, TYPE: LIST},
+            "file_server_user": {REQUIRED: False, TYPE: STR},
+            "file_server_pswd": {REQUIRED: False, TYPE: STR, NO_LOG: True},
 
         },
         supports_check_mode=False)

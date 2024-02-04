@@ -64,7 +64,7 @@ from ibmc_ansible.ibmc_redfish_api.api_manage_snmp import get_snmp_trap
 from ibmc_ansible.ibmc_logger import report
 from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.utils import is_support_server
-from ibmc_ansible.utils import SERVERTYPE
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG
 from ibmc_ansible.utils import ansible_ibmc_run_module
 
 
@@ -86,7 +86,7 @@ def ibmc_get_snmp_trap_module(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             ret = get_snmp_trap(ibmc)
     return ret
 
@@ -95,9 +95,9 @@ def main():
     # Use AnsibleModule to read yml files and convert it to dict
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
         },
         supports_check_mode=False)
 

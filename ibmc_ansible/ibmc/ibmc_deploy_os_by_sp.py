@@ -10,9 +10,11 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = """
 module: ibmc_deploy_os_by_sp
@@ -131,8 +133,8 @@ from ibmc_ansible.ibmc_logger import log
 from ibmc_ansible.ibmc_redfish_api.api_deploy_os_by_sp import deploy_os_by_sp_process
 from ibmc_ansible.ibmc_redfish_api.redfish_base import IbmcBaseConnect
 from ibmc_ansible.utils import is_support_server
+from ibmc_ansible.utils import SERVERTYPE, REQUIRED, TYPE, STR, NO_LOG, DICT
 from ibmc_ansible.utils import ansible_ibmc_run_module
-from ibmc_ansible.utils import SERVERTYPE
 
 
 def ibmc_deploy_os_by_sp_process(module):
@@ -153,7 +155,7 @@ def ibmc_deploy_os_by_sp_process(module):
     """
     with IbmcBaseConnect(module.params, log, report) as ibmc:
         ret = is_support_server(ibmc, SERVERTYPE)
-        if ret['result']:
+        if ret.get('result'):
             ret = deploy_os_by_sp_process(ibmc, module.params["os_img"],
                                           module.params["os_config"])
     return ret
@@ -162,11 +164,11 @@ def ibmc_deploy_os_by_sp_process(module):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "ibmc_ip": {"required": True, "type": 'str'},
-            "ibmc_user": {"required": True, "type": 'str'},
-            "ibmc_pswd": {"required": True, "type": 'str', "no_log": True},
-            "os_img": {"required": True, "type": 'str', "no_log": True},
-            "os_config": {"required": True, "type": 'dict', "no_log": True},
+            "ibmc_ip": {REQUIRED: True, TYPE: STR},
+            "ibmc_user": {REQUIRED: True, TYPE: STR},
+            "ibmc_pswd": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "os_img": {REQUIRED: True, TYPE: STR, NO_LOG: True},
+            "os_config": {REQUIRED: True, TYPE: DICT, NO_LOG: True},
         },
         supports_check_mode=False)
     ansible_ibmc_run_module(ibmc_deploy_os_by_sp_process, module, log, report)

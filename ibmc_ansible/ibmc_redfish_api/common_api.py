@@ -10,14 +10,15 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License v3.0+ for more detail
 
-import requests
 import os
 import json
 import time
+import requests
 
 from ibmc_ansible.utils import set_result
 from ibmc_ansible.utils import write_result
 from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import RESULT, MSG
 
 # Command delivery timed out.
 TIME_OUT = 30
@@ -45,14 +46,14 @@ def common_api(ibmc, url, request_method, request_body):
     Date: 2021/2/22
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     request_method = request_method.upper()
     # The default request body is empty
     if not request_body:
         request_body = '{}'
 
     check_res = check_user_set(ibmc, url, request_method, request_body)
-    if not check_res.get('result'):
+    if not check_res.get(RESULT):
         return check_res
 
     # Obtains the payload
@@ -71,18 +72,18 @@ def common_api(ibmc, url, request_method, request_body):
         return ret
 
     # Parsing the request result
-    if not request_res.get('result'):
+    if not request_res.get(RESULT):
         return request_res
 
     if request_method != "GET":
-        log_info = "%s request successfully! The info is: %s \n" % (request_method, request_res.get('msg'))
+        log_info = "%s request successfully! The info is: %s \n" % (request_method, request_res.get(MSG))
         set_result(ibmc.log_info, log_info, True, ret)
         return ret
 
     # Save the result of "GET" request as a file.
     filename = os.path.join(
         IBMC_REPORT_PATH, "common_api/%s_temp_common_api.json" % str(ibmc.ip))
-    write_result(ibmc, filename, request_res.get('msg'))
+    write_result(ibmc, filename, request_res.get(MSG))
     log_info = "GET request successfully! The result saved in " \
                "/common_api/%s_temp_common_api.json." % str(ibmc.ip)
     set_result(ibmc.log_info, log_info, True, ret)
@@ -108,7 +109,7 @@ def send_request(ibmc, url, request_method, payload):
     Date: 2021/2/22
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Obtain the token information of the iBMC
     token = ibmc.bmc_token
 
@@ -134,7 +135,7 @@ def send_request(ibmc, url, request_method, payload):
             set_result(ibmc.log_error, log_error, False, ret)
             return ret
         else:
-            ret["msg"] = str(request_json)
+            ret[MSG] = str(request_json)
             return ret
 
     except Exception as e:
@@ -158,7 +159,7 @@ def check_user_set(ibmc, url, request_method, request_body):
             "msg": description for success or failure
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Verifying Parameters Configured by Users
     if request_method not in REQUEST_METHOD:
@@ -201,13 +202,14 @@ def wait_task(ibmc, task_id, information, wait_time):
             "result": True or False
             "msg": description for success or failure
     """
-    rets = {'result': True, 'msg': ''}
+    rets = {RESULT: True, MSG: ''}
     cnt = -1
 
     oem_info = ibmc.oem_info
 
     try:
-        for cnt in range(wait_time):
+        for _ in range(wait_time):
+            cnt = cnt + 1
             time.sleep(3)
             task_ret = ibmc.get_task_info(task_id)
 
@@ -247,7 +249,7 @@ def wait_task(ibmc, task_id, information, wait_time):
 
 
 def result_parse(ibmc, result, information):
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     request_code = result.status_code
     if request_code == 405:
         log_error = "%s The status code is %s. This BMC version does not support the operation." \

@@ -17,6 +17,7 @@ from ibmc_ansible.utils import set_result
 from ibmc_ansible.ibmc_redfish_api.api_manage_file import download_file_request
 from ibmc_ansible.ibmc_redfish_api.api_manage_raid import get_task_status
 from ibmc_ansible.utils import IBMC_REPORT_PATH
+from ibmc_ansible.utils import RESULT, MSG
 
 # File server type
 FILE_SERVER = ("sftp", "https", "nfs", "cifs", "scp")
@@ -50,16 +51,16 @@ def collect_log(ibmc, save_location, file_name, log_type):
     Date: 2021/2/22 21:13
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     log_type = log_type.upper()
 
     # Collecting Logs
     oem_info = ibmc.oem_info
     if log_type == "SEL":
         get_id_res = get_log_id(ibmc)
-        if not get_id_res.get("result"):
+        if not get_id_res.get(RESULT):
             return get_id_res
-        log_id = get_id_res.get("msg")
+        log_id = get_id_res.get(MSG)
         root_url = "https://%s" % ibmc.ip
 
         url = "%s%s/Actions/Oem/%s/LogService.CollectSel" % (root_url, log_id, oem_info)
@@ -74,10 +75,10 @@ def collect_log(ibmc, save_location, file_name, log_type):
 
     # get path for storing collected log files
     log_path_result = get_log_path(ibmc, save_location, file_name, log_type)
-    if not log_path_result.get('result'):
+    if not log_path_result.get(RESULT):
         return log_path_result
 
-    log_path = log_path_result.get('msg')
+    log_path = log_path_result.get(MSG)
     file_server_type = save_location.get("save_mode")
 
     if file_server_type is None:
@@ -86,12 +87,12 @@ def collect_log(ibmc, save_location, file_name, log_type):
 
     request_result = collect_log_request(ibmc, log_path, url, log_type)
 
-    if not request_result.get('result'):
+    if not request_result.get(RESULT):
         return request_result
 
     if file_server_type in FILE_SERVER:
         log_info = "%s %s logs have been save as %s on %s server " \
-                   % (request_result.get('msg'), log_type, file_name, file_server_type)
+                   % (request_result.get(MSG), log_type, file_name, file_server_type)
         set_result(ibmc.log_info, log_info, True, ret)
         return ret
 
@@ -106,9 +107,9 @@ def collect_log(ibmc, save_location, file_name, log_type):
         file_name = os.path.join(file_path, name)
 
     down_log_result = download_file_request(ibmc, name, file_name, file_type="log")
-    if not down_log_result.get('result'):
+    if not down_log_result.get(RESULT):
         log_error = 'Collect %s logs failed! The error info is: %s' \
-                    % (log_type, down_log_result.get('msg'))
+                    % (log_type, down_log_result.get(MSG))
         set_result(ibmc.log_error, log_error, False, ret)
     else:
         log_info = 'Collect %s logs successfully! Logs have been saved as %s' % (log_type, file_name)
@@ -134,7 +135,7 @@ def get_log_path(ibmc, save_location, file_name, log_type):
     Date: 2021/2/22 21:13
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     if not file_name.startswith('/'):
         file_name = "/%s" % file_name
     path, name = os.path.split(file_name)
@@ -175,7 +176,7 @@ def get_log_path(ibmc, save_location, file_name, log_type):
         set_result(ibmc.log_error, log_error, False, ret)
         return ret
 
-    ret['msg'] = log_path
+    ret[MSG] = log_path
     return ret
 
 
@@ -197,12 +198,11 @@ def collect_log_request(ibmc, log_path, url, log_type):
     Date: 2021/2/22 21:13
     """
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     # Initialize request information.
     token = ibmc.get_token()
-    headers = {'content-type': 'application/json',
-               'X-Auth-Token': token}
+    headers = {'content-type': 'application/json', 'X-Auth-Token': token}
     payload = {"Type": "URI", "Content": log_path}
 
     # send request to collect logss
@@ -247,7 +247,7 @@ def wait_collect(ibmc, task_url, log_type):
         None
     Date: 2019/11/9 18:04
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
     # Wait for task start
     time.sleep(START_TIME)
 
@@ -295,7 +295,7 @@ def get_log_id(ibmc):
         None
     Date: 2021/6/30 18:04
     """
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     url = "%s/LogServices" % ibmc.system_uri
     # Obtain the token information of the iBMC
@@ -322,7 +322,7 @@ def get_log_id(ibmc):
         set_result(ibmc.log_error, log_error, False, ret)
     else:
         log_id = res_info.get("Members")[0].get("@odata.id")
-        ret["msg"] = log_id
+        ret[MSG] = log_id
     return ret
 
 
@@ -343,12 +343,12 @@ def clear_sel_log(ibmc):
     ibmc.log_info("Start to clear SEL logs...")
 
     # Initialize return information
-    ret = {'result': True, 'msg': ''}
+    ret = {RESULT: True, MSG: ''}
 
     get_id_res = get_log_id(ibmc)
-    if not get_id_res.get("result"):
+    if not get_id_res.get(RESULT):
         return get_id_res
-    log_id = get_id_res.get("msg")
+    log_id = get_id_res.get(MSG)
     root_url = "https://%s" % ibmc.ip
     url = "%s%s/Actions/LogService.ClearLog" % (root_url, log_id)
 
