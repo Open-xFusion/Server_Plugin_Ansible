@@ -32,10 +32,10 @@ IV. Software Prerequisites
 V. Supported Device
     
     X86 Architecture:
-        xFusion Blade Server: CH121 V3, CH121 V5, CH121L V5, CH242 V3, CH242 V5, MM921, CX621, CX320
-        xFusion Rack Server: RH2288H V3, 2288H V5, 2488 V5, 1288H V6, 2288H V6, 5288 V6, 1288H V7, 2288H V7, 5288 V7, 1258H V7, 2288 V7, 5885H V7
-        xFusion High-density Server: XH622 V3, XH321 V5
-        xFusion Heterogeneous Server: G560 V5
+        Blade server: CH121 V3, CH121 V5, CH121L V5, CH242 V3, CH242 V5, MM921, CX621, CX320
+        Rack server: RH2288H V3, 2288H V5, 2488 V5, 1288H V6, 2288H V6, 5288 V6, 1288H V7, 2288H V7, 5288 V7, 1258H V7, 2288 V7, 5885H V7, 2158H V8, 2258H V8, 2288 V8
+        High-density server: XH622 V3, XH321 V5
+        AI server: G560 V5, G6550 V8
 
 	
 VI. Additional Resources
